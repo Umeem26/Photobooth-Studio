@@ -8,6 +8,9 @@
 .project
 bin/
 
+src/credentials.json
+tokens/
+
 # Abaikan file hasil output
 *.png
 *.jpg
