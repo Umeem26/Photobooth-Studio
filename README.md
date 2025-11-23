@@ -1,4 +1,4 @@
-# 📸 Photobooth Studio Pro
+# 📸 SixSeven Photobooth Studio Pro
 
 ![Java](https://img.shields.io/badge/Java-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white)
 ![Swing](https://img.shields.io/badge/Swing-GUI-red?style=for-the-badge)
@@ -28,15 +28,14 @@ Aplikasi ini bukan sekadar mengambil foto, tetapi memberikan pengalaman *photobo
 
 | Halaman Pemilihan Template | Live Kamera & Filter |
 |:--------------------------:|:--------------------:|
-| ![Template Selection](screenshots/template_screen.png) | ![Camera UI](screenshots/camera_screen.png) |
-| *Memilih 6 jenis layout strip* | *Proses foto dengan countdown overlay* |
+| ![Template Selection](./screenshots/template_screen.png) | ![Camera UI](./screenshots/camera_screen.png) |
+| *Memilih jenis layout strip* | *Proses foto dengan countdown overlay* |
 
 | Hasil QR Code |
 |:-------------:|
-| ![QR Code](screenshots/qr_result.png) |
+| ![QR Code](./screenshots/qr_result.png) |
 | *Scan untuk download via Drive* |
 
-*(Catatan: Ganti path gambar di atas dengan screenshot asli aplikasi Anda)*
 
 ---
 
