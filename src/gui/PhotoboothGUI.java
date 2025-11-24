@@ -49,6 +49,7 @@ public class PhotoboothGUI extends JFrame {
     private int currentCaptureSlot = 0;
     private CountdownPainter countdownPainter;
     private String selectedTemplateId;
+    private int maxPhotos;
 
     // Warna Tema
     private final Color PRIMARY_COLOR = new Color(0, 120, 215); 
@@ -59,6 +60,9 @@ public class PhotoboothGUI extends JFrame {
     public PhotoboothGUI(PhotoboothService service, String selectedTemplateId) {
         this.service = service;
         this.selectedTemplateId = selectedTemplateId;
+
+        StripTemplate template = service.getAvailableTemplates().get(selectedTemplateId);
+        this.maxPhotos = (template != null) ? template.getMaxPhotos() : 4;
 
         setTitle("Photobooth Studio Pro");
         setSize(1100, 750);
@@ -90,6 +94,7 @@ public class PhotoboothGUI extends JFrame {
         addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosing(WindowEvent e) {
+                service.clearCapturedImages();
                 service.getCameraManager().closeCamera();
                 TemplateSelectionGUI selectionGUI = new TemplateSelectionGUI(service);
                 selectionGUI.setVisible(true);
@@ -130,13 +135,13 @@ public class PhotoboothGUI extends JFrame {
     }
     
     private JPanel createGalleryPanel() {
-        JPanel panel = new JPanel(new GridLayout(4, 1, 10, 10));
+        JPanel panel = new JPanel(new GridLayout(maxPhotos, 1, 10, 10));
         panel.setBackground(new Color(30, 30, 30));
         panel.setBorder(new EmptyBorder(0, 10, 10, 10));
         panel.setPreferredSize(new Dimension(220, 0));
 
-        galleryLabels = new JLabel[4];
-        for (int i = 0; i < 4; i++) {
+        galleryLabels = new JLabel[maxPhotos];
+        for (int i = 0; i < maxPhotos; i++) {
             galleryLabels[i] = new JLabel("Slot " + (i + 1), SwingConstants.CENTER);
             galleryLabels[i].setFont(UI_FONT);
             galleryLabels[i].setForeground(Color.GRAY);
@@ -158,7 +163,7 @@ public class PhotoboothGUI extends JFrame {
         mainActionPanel.setBorder(new EmptyBorder(10, 20, 20, 20));
 
         // Tombol AMBIL FOTO
-        btnCapture = new JButton("AMBIL FOTO (1/4)");
+        btnCapture = new JButton("AMBIL FOTO (1/" + maxPhotos + ")");
         styleButton(btnCapture, PRIMARY_COLOR);
         // Muat ikon camera.png, resize ke 24px
         btnCapture.setIcon(loadIcon("camera.png", 24)); 
@@ -251,7 +256,7 @@ public class PhotoboothGUI extends JFrame {
     // --- LOGIKA UTAMA ---
 
     private void startSingleCaptureCountdown() {
-        if (currentCaptureSlot >= 4) {
+        if (currentCaptureSlot >= maxPhotos) {
             JOptionPane.showMessageDialog(this, "Galeri sudah penuh. Silakan simpan strip foto Anda.");
             return;
         }
@@ -287,20 +292,20 @@ public class PhotoboothGUI extends JFrame {
         service.addCapturedImage(filteredImage);
         updateGallery();
         currentCaptureSlot++;
-        if (currentCaptureSlot >= 4) {
+        if (currentCaptureSlot >= maxPhotos) {
             btnCapture.setEnabled(false);
             btnSave.setEnabled(true);
             btnCapture.setBackground(Color.DARK_GRAY); 
             btnCapture.setText("GALERI PENUH");
         } else {
             btnCapture.setEnabled(true);
-            btnCapture.setText("AMBIL FOTO (" + (currentCaptureSlot + 1) + "/4)");
+            btnCapture.setText("AMBIL FOTO (" + (currentCaptureSlot + 1) + "/" + maxPhotos + ")");
         }
     }
 
     private void updateGallery() {
         int capturedCount = service.getCapturedImages().size();
-        for (int i = 0; i < 4; i++) {
+        for (int i = 0; i < maxPhotos; i++) {
             if (i < capturedCount) {
                 BufferedImage img = service.getCapturedImages().get(i);
                 Image thumbnail = img.getScaledInstance(180, 135, Image.SCALE_SMOOTH);
@@ -349,7 +354,7 @@ public class PhotoboothGUI extends JFrame {
             btnCapture.setEnabled(true);
             btnCapture.setBackground(PRIMARY_COLOR); 
             currentCaptureSlot = 0;
-            btnCapture.setText("AMBIL FOTO (1/4)");
+            btnCapture.setText("AMBIL FOTO (1/" + maxPhotos + ")");
 
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(this, "Error: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
