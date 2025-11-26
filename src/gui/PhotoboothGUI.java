@@ -3,8 +3,6 @@ package gui;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.awt.image.BufferedImage;
@@ -33,12 +31,10 @@ public class PhotoboothGUI extends JFrame {
 
     private PhotoboothService service;
 
-    // Komponen GUI
     private WebcamPanel webcamPanel;
     private JPanel pnlGallery;
     private JButton btnCapture;
     private JButton btnSave;
-    private JComboBox<String> comboTemplate;
     private JComboBox<String> comboExport;
     private JComboBox<String> comboFilter;
     
@@ -48,9 +44,13 @@ public class PhotoboothGUI extends JFrame {
     private int countdownValue;
     private int currentCaptureSlot = 0;
     private CountdownPainter countdownPainter;
+    
     private String selectedTemplateId;
+    
+    // --- TAMBAHAN BARU: Variabel dinamis jumlah foto ---
+    private int maxPhotos; 
+    // --- BATAS TAMBAHAN BARU ---
 
-    // Warna Tema
     private final Color PRIMARY_COLOR = new Color(0, 120, 215); 
     private final Color SUCCESS_COLOR = new Color(30, 160, 80); 
     private final Font TITLE_FONT = new Font("Segoe UI", Font.BOLD, 24);
@@ -59,6 +59,11 @@ public class PhotoboothGUI extends JFrame {
     public PhotoboothGUI(PhotoboothService service, String selectedTemplateId) {
         this.service = service;
         this.selectedTemplateId = selectedTemplateId;
+
+        // --- LOGIKA BARU: Ambil jumlah foto dari template yang dipilih ---
+        StripTemplate currentTemplate = service.getAvailableTemplates().get(selectedTemplateId);
+        this.maxPhotos = currentTemplate.getPhotoCount();
+        // -----------------------------------------------------------------
 
         setTitle("Photobooth Studio Pro");
         setSize(1100, 750);
@@ -84,6 +89,7 @@ public class PhotoboothGUI extends JFrame {
 
         add(createActionPanel(), BorderLayout.SOUTH);
 
+        // Panggil createGalleryPanel yang sekarang dinamis
         pnlGallery = createGalleryPanel();
         add(pnlGallery, BorderLayout.EAST);
 
@@ -116,7 +122,6 @@ public class PhotoboothGUI extends JFrame {
         JLabel title = new JLabel("PHOTOBOOTH STUDIO");
         title.setFont(TITLE_FONT);
         title.setForeground(Color.WHITE);
-        // Gunakan helper loadIcon untuk ikon header juga
         title.setIcon(loadIcon("camera.png", 32)); 
         title.setIconTextGap(15);
 
@@ -129,14 +134,18 @@ public class PhotoboothGUI extends JFrame {
         return header;
     }
     
+    // --- MODIFIKASI: Galeri Dinamis sesuai maxPhotos ---
     private JPanel createGalleryPanel() {
-        JPanel panel = new JPanel(new GridLayout(4, 1, 10, 10));
+        // GridLayout menyesuaikan baris dengan maxPhotos
+        JPanel panel = new JPanel(new GridLayout(maxPhotos, 1, 10, 10));
         panel.setBackground(new Color(30, 30, 30));
         panel.setBorder(new EmptyBorder(0, 10, 10, 10));
         panel.setPreferredSize(new Dimension(220, 0));
 
-        galleryLabels = new JLabel[4];
-        for (int i = 0; i < 4; i++) {
+        // Inisialisasi array sesuai ukuran
+        galleryLabels = new JLabel[maxPhotos];
+        
+        for (int i = 0; i < maxPhotos; i++) {
             galleryLabels[i] = new JLabel("Slot " + (i + 1), SwingConstants.CENTER);
             galleryLabels[i].setFont(UI_FONT);
             galleryLabels[i].setForeground(Color.GRAY);
@@ -151,28 +160,23 @@ public class PhotoboothGUI extends JFrame {
         return panel;
     }
 
-    // --- BAGIAN INI DIPERBARUI UNTUK IKON ---
     private JPanel createActionPanel() {
         JPanel mainActionPanel = new JPanel(new BorderLayout(10, 10));
         mainActionPanel.setBackground(new Color(30, 30, 30));
         mainActionPanel.setBorder(new EmptyBorder(10, 20, 20, 20));
 
-        // Tombol AMBIL FOTO
-        btnCapture = new JButton("AMBIL FOTO (1/4)");
+        // Tombol menyesuaikan teks dengan maxPhotos
+        btnCapture = new JButton("AMBIL FOTO (1/" + maxPhotos + ")");
         styleButton(btnCapture, PRIMARY_COLOR);
-        // Muat ikon camera.png, resize ke 24px
         btnCapture.setIcon(loadIcon("camera.png", 24)); 
         btnCapture.addActionListener(e -> startSingleCaptureCountdown());
 
-        // Tombol SIMPAN
         btnSave = new JButton("SIMPAN STRIP");
         styleButton(btnSave, SUCCESS_COLOR);
         btnSave.setEnabled(false);
-        // Muat ikon save.png, resize ke 24px
         btnSave.setIcon(loadIcon("save.png", 24));
         btnSave.addActionListener(e -> saveStripProcess());
 
-        // Dropdowns
         comboFilter = new JComboBox<>();
         for (String filterName : filterStrategies.keySet()) comboFilter.addItem(filterName);
         styleComboBox(comboFilter);
@@ -211,11 +215,6 @@ public class PhotoboothGUI extends JFrame {
         return mainActionPanel;
     }
 
-    // --- HELPER BARU: Memuat & Resize Ikon ---
-    /**
-     * Memuat gambar dari file, mengubah ukurannya, dan mengembalikannya sebagai ImageIcon.
-     * Jika file tidak ada, mengembalikan null (tidak error/crash).
-     */
     private ImageIcon loadIcon(String path, int size) {
         try {
             File imgFile = new File(path);
@@ -225,7 +224,6 @@ public class PhotoboothGUI extends JFrame {
                 Image newImg = img.getScaledInstance(size, size, Image.SCALE_SMOOTH);
                 return new ImageIcon(newImg);
             } else {
-                System.err.println("Warning: Ikon tidak ditemukan -> " + path);
                 return null;
             }
         } catch (Exception e) {
@@ -240,7 +238,7 @@ public class PhotoboothGUI extends JFrame {
         btn.setFocusPainted(false);
         btn.setBorder(new EmptyBorder(10, 20, 10, 20));
         btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        btn.setIconTextGap(15); // Jarak antara ikon dan teks
+        btn.setIconTextGap(15);
     }
     
     private void styleComboBox(JComboBox box) {
@@ -248,10 +246,11 @@ public class PhotoboothGUI extends JFrame {
         box.setPreferredSize(new Dimension(200, 35));
     }
 
-    // --- LOGIKA UTAMA ---
+    // --- LOGIKA UTAMA (Disesuaikan dengan maxPhotos) ---
 
     private void startSingleCaptureCountdown() {
-        if (currentCaptureSlot >= 4) {
+        // Cek limit menggunakan maxPhotos
+        if (currentCaptureSlot >= maxPhotos) {
             JOptionPane.showMessageDialog(this, "Galeri sudah penuh. Silakan simpan strip foto Anda.");
             return;
         }
@@ -287,20 +286,24 @@ public class PhotoboothGUI extends JFrame {
         service.addCapturedImage(filteredImage);
         updateGallery();
         currentCaptureSlot++;
-        if (currentCaptureSlot >= 4) {
+        
+        // Cek limit menggunakan maxPhotos
+        if (currentCaptureSlot >= maxPhotos) {
             btnCapture.setEnabled(false);
             btnSave.setEnabled(true);
             btnCapture.setBackground(Color.DARK_GRAY); 
             btnCapture.setText("GALERI PENUH");
         } else {
             btnCapture.setEnabled(true);
-            btnCapture.setText("AMBIL FOTO (" + (currentCaptureSlot + 1) + "/4)");
+            // Update teks tombol dinamis
+            btnCapture.setText("AMBIL FOTO (" + (currentCaptureSlot + 1) + "/" + maxPhotos + ")");
         }
     }
 
     private void updateGallery() {
         int capturedCount = service.getCapturedImages().size();
-        for (int i = 0; i < 4; i++) {
+        // Loop sesuai maxPhotos
+        for (int i = 0; i < maxPhotos; i++) {
             if (i < capturedCount) {
                 BufferedImage img = service.getCapturedImages().get(i);
                 Image thumbnail = img.getScaledInstance(180, 135, Image.SCALE_SMOOTH);
@@ -349,7 +352,7 @@ public class PhotoboothGUI extends JFrame {
             btnCapture.setEnabled(true);
             btnCapture.setBackground(PRIMARY_COLOR); 
             currentCaptureSlot = 0;
-            btnCapture.setText("AMBIL FOTO (1/4)");
+            btnCapture.setText("AMBIL FOTO (1/" + maxPhotos + ")");
 
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(this, "Error: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);

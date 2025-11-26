@@ -18,6 +18,13 @@ public interface StripTemplate {
      */
     BufferedImage getPreviewImage();
 
+    // --- TAMBAHAN BARU ---
+    /**
+     * Mengembalikan jumlah foto yang dibutuhkan oleh template ini.
+     */
+    int getPhotoCount();
+    // --- BATAS TAMBAHAN BARU ---
+
     int getMaxPhotos();
 
     default BufferedImage cropImage(BufferedImage originalImage, int targetWidth, int targetHeight) {

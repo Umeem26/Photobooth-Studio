@@ -77,4 +77,9 @@ public class TemplateSquare implements StripTemplate {
         g.dispose();
         return img;
     }
+
+    @Override
+    public int getPhotoCount() {
+        return 4; // Template ini butuh 3 foto
+    }
 }

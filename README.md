@@ -14,7 +14,7 @@
 Aplikasi ini bukan sekadar mengambil foto, tetapi memberikan pengalaman *photobooth* digital yang lengkap:
 
 * **📸 Live Webcam Feed:** Pratinjau kamera real-time dengan hitungan mundur visual di layar.
-* **🎨 6 Pilihan Template:** Mulai dari Strip Vertikal, Kotak 2x2, hingga layout Klasik.
+* **🎨 Pilihan Jenis Template:** Mulai dari Strip Vertikal, Kotak 2x2, hingga layout Klasik.
 * **🖼️ Filter Efek:** Pilihan filter *Normal* dan *Grayscale* (Hitam Putih) secara real-time.
 * **☁️ Integrasi Google Drive:** Upload otomatis ke Cloud penyimpanan.
 * **📱 QR Code Generator:** Pengguna cukup scan QR Code yang muncul untuk mengunduh foto langsung ke HP mereka.
@@ -29,7 +29,7 @@ Aplikasi ini bukan sekadar mengambil foto, tetapi memberikan pengalaman *photobo
 | Halaman Pemilihan Template | Live Kamera & Filter |
 |:--------------------------:|:--------------------:|
 | ![Template Selection](screenshots/template_screen.png) | ![Camera UI](screenshots/camera_screen.png) |
-| *Memilih 6 jenis layout strip* | *Proses foto dengan countdown overlay* |
+| *Memilih jenis layout strip* | *Proses foto dengan countdown overlay* |
 
 | Hasil QR Code |
 |:-------------:|
