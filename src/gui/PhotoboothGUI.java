@@ -27,6 +27,9 @@ import filter.FilterStrategy;
 import filter.GrayscaleFilterStrategy;
 import filter.NoFilterStrategy;
 
+import utils.VideoRecorder;
+import utils.VideoPreviewWindow;
+
 public class PhotoboothGUI extends JFrame {
 
     private PhotoboothService service;
@@ -44,6 +47,8 @@ public class PhotoboothGUI extends JFrame {
     private int countdownValue;
     private int currentCaptureSlot = 0;
     private CountdownPainter countdownPainter;
+
+    private VideoRecorder videoRecorder = new VideoRecorder();
     
     private String selectedTemplateId;
     private int maxPhotos;
@@ -246,22 +251,37 @@ public class PhotoboothGUI extends JFrame {
             JOptionPane.showMessageDialog(this, "Galeri sudah penuh. Silakan simpan strip foto Anda.");
             return;
         }
+
         btnCapture.setEnabled(false);
         countdownValue = 3;
         countdownPainter.setCountdownText(String.valueOf(countdownValue));
         webcamPanel.repaint();
         btnCapture.setText("SIAP...");
+
+        // MULAI REKAMAN VIDEO
+        videoRecorder.startRecording();
+
         countdownTimer = new Timer(1000, e -> {
             countdownValue--;
             countdownPainter.setCountdownText(String.valueOf(countdownValue));
             webcamPanel.repaint();
+
             if (countdownValue <= 0) {
-                ((Timer)e.getSource()).stop();
+                ((Timer) e.getSource()).stop();
                 countdownPainter.setCountdownText("");
                 webcamPanel.repaint();
+
+                // STOP REKAMAN & TAMPILKAN PREVIEW
+                File videoFile = videoRecorder.stopRecording();
+                if (videoFile != null) {
+                    new VideoPreviewWindow(videoFile);
+                }
+
+                // AMBIL FOTO TERAKHIR
                 takeSinglePicture();
             }
         });
+
         countdownTimer.start();
     }
 
@@ -379,10 +399,17 @@ public class PhotoboothGUI extends JFrame {
         }
         @Override
         public void paintImage(WebcamPanel panel, BufferedImage image, Graphics2D g2) {
+
+            // kalau sedang merekam, tambahkan frame ke video
+            if (videoRecorder != null && videoRecorder.isRecording()) {
+                videoRecorder.addFrame(image);
+            }
+
             defaultPainter.paintImage(panel, image, g2);
-            if (countdownText.isEmpty()) return;
-            
-            g2.setColor(new Color(0, 0, 0, 100));
+
+            if (countdownText == null || countdownText.isEmpty()) return;
+
+            g2.setColor(new Color(0, 0, 0, 150));
             g2.fillRect(0, 0, panel.getWidth(), panel.getHeight());
             
             g2.setFont(countdownFont);
