@@ -49,6 +49,8 @@ public class PhotoboothGUI extends JFrame {
     private CountdownPainter countdownPainter;
 
     private VideoRecorder videoRecorder = new VideoRecorder();
+    private File[] videoFiles;
+    private JButton btnPreviewVideo;
     
     private String selectedTemplateId;
     private int maxPhotos;
@@ -64,6 +66,7 @@ public class PhotoboothGUI extends JFrame {
 
         StripTemplate template = service.getAvailableTemplates().get(selectedTemplateId);
         this.maxPhotos = (template != null) ? template.getMaxPhotos() : 4;
+        videoFiles = new File[maxPhotos];
 
         setTitle("Photobooth Studio Pro");
         setSize(1100, 750);
@@ -175,6 +178,51 @@ public class PhotoboothGUI extends JFrame {
         btnSave.setIcon(loadIcon("save.png", 24));
         btnSave.addActionListener(e -> saveStripProcess());
 
+        // Tombol PREVIEW VIDEO (muncul setelah 4/4)
+        btnPreviewVideo = new JButton("PREVIEW VIDEO");
+        styleButton(btnPreviewVideo, new Color(70, 70, 70));
+        btnPreviewVideo.setEnabled(false);
+        btnPreviewVideo.setVisible(false);
+        btnPreviewVideo.addActionListener(e -> {
+            java.util.List<String> labels = new java.util.ArrayList<>();
+            java.util.List<File> files = new java.util.ArrayList<>();
+
+            // Kumpulkan semua video yang ada
+            for (int i = 0; i < maxPhotos; i++) {
+                if (videoFiles != null && videoFiles[i] != null && videoFiles[i].exists()) {
+                    labels.add("Video sesi " + (i + 1));   // contoh: "Video sesi 1"
+                    files.add(videoFiles[i]);
+                }
+            }
+
+            if (files.isEmpty()) {
+                JOptionPane.showMessageDialog(
+                        this,
+                        "Belum ada video rekaman untuk sesi ini.",
+                        "Info",
+                        JOptionPane.INFORMATION_MESSAGE
+                );
+                return;
+            }
+
+            Object choice = JOptionPane.showInputDialog(
+                    this,
+                    "Pilih video yang ingin dipreview:",
+                    "Preview Video",
+                    JOptionPane.PLAIN_MESSAGE,
+                    null,
+                    labels.toArray(),
+                    labels.get(0)
+            );
+
+            if (choice != null) {
+                int idx = labels.indexOf(choice.toString());
+                if (idx >= 0) {
+                    new VideoPreviewWindow(files.get(idx));
+                }
+            }
+        });
+
         comboFilter = new JComboBox<>();
         for (String filterName : filterStrategies.keySet()) comboFilter.addItem(filterName);
         styleComboBox(comboFilter);
@@ -186,6 +234,7 @@ public class PhotoboothGUI extends JFrame {
         buttonPanel.setOpaque(false);
         buttonPanel.add(btnCapture);
         buttonPanel.add(btnSave);
+        buttonPanel.add(btnPreviewVideo);
 
         JPanel optionsPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 20, 0));
         optionsPanel.setOpaque(false);
@@ -273,11 +322,10 @@ public class PhotoboothGUI extends JFrame {
 
                 // STOP REKAMAN & TAMPILKAN PREVIEW
                 File videoFile = videoRecorder.stopRecording();
-                if (videoFile != null) {
-                    new VideoPreviewWindow(videoFile);
+                if (videoFile != null && currentCaptureSlot >= 0 && currentCaptureSlot < maxPhotos) {
+                    videoFiles[currentCaptureSlot] = videoFile;   // simpan sesuai sesi foto sekarang
                 }
 
-                // AMBIL FOTO TERAKHIR
                 takeSinglePicture();
             }
         });
@@ -286,28 +334,62 @@ public class PhotoboothGUI extends JFrame {
     }
 
     private void takeSinglePicture() {
-        playSound("shutter.wav");
+        // Ambil gambar dari kamera
         BufferedImage rawImage = service.captureImage();
         if (rawImage == null) {
-            btnCapture.setEnabled(true);
-            return;
-        }
-        String selectedFilterName = (String) comboFilter.getSelectedItem();
-        FilterStrategy selectedFilter = filterStrategies.get(selectedFilterName);
-        BufferedImage filteredImage = selectedFilter.applyFilter(rawImage);
-        service.addCapturedImage(filteredImage);
-        updateGallery();
-        currentCaptureSlot++;
-        if (currentCaptureSlot >= maxPhotos) {
-            btnCapture.setEnabled(false);
-            btnSave.setEnabled(true);
-            btnCapture.setBackground(Color.DARK_GRAY); 
-            btnCapture.setText("GALERI PENUH");
-        } else {
+            JOptionPane.showMessageDialog(this,
+                    "Gagal mengambil gambar dari kamera.",
+                    "Error",
+                    JOptionPane.ERROR_MESSAGE);
+            // kalau gagal, izinkan user mencoba lagi
             btnCapture.setEnabled(true);
             btnCapture.setText("AMBIL FOTO (" + (currentCaptureSlot + 1) + "/" + maxPhotos + ")");
+            return;
+        }
+
+        // Terapkan filter
+        String selectedFilterName = (String) comboFilter.getSelectedItem();
+        FilterStrategy strategy = filterStrategies.getOrDefault(selectedFilterName, new NoFilterStrategy());
+        BufferedImage filtered = strategy.applyFilter(rawImage);
+
+        // Simpan ke service (list capturedImages)
+        service.addCapturedImage(filtered);
+
+        // Update gallery
+        updateGallery();
+
+        // Naikkan slot saat ini
+        currentCaptureSlot++;
+
+        if (currentCaptureSlot < maxPhotos) {
+            // Masih ada foto berikutnya → update teks tombol lalu
+            // OTOMATIS mulai countdown berikutnya
+            btnCapture.setText("AMBIL FOTO (" + (currentCaptureSlot + 1) + "/" + maxPhotos + ")");
+            startSingleCaptureCountdown();   // <<< AUTO LANJUT SESI BERIKUTNYA
+        } else {
+            // Sudah cukup foto (galeri penuh)
+            btnCapture.setText("GALERI PENUH");
+            btnCapture.setEnabled(false);
+            btnSave.setEnabled(true);
+
+            // Cek kalau ada minimal 1 video rekaman → tampilkan tombol preview
+            boolean hasAnyVideo = false;
+            if (videoFiles != null) {
+                for (int i = 0; i < maxPhotos; i++) {
+                    if (videoFiles[i] != null && videoFiles[i].exists()) {
+                        hasAnyVideo = true;
+                        break;
+                    }
+                }
+            }
+
+            if (hasAnyVideo) {
+                btnPreviewVideo.setVisible(true);
+                btnPreviewVideo.setEnabled(true);
+            }
         }
     }
+
 
     private void updateGallery() {
         int capturedCount = service.getCapturedImages().size();
@@ -361,6 +443,11 @@ public class PhotoboothGUI extends JFrame {
             btnCapture.setBackground(PRIMARY_COLOR); 
             currentCaptureSlot = 0;
             btnCapture.setText("AMBIL FOTO (1/" + maxPhotos + ")");
+
+            btnPreviewVideo.setVisible(false);
+            btnPreviewVideo.setEnabled(false);
+            java.util.Arrays.fill(videoFiles, null);
+
 
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(this, "Error: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);

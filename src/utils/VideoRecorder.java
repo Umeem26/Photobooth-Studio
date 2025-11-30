@@ -1,6 +1,6 @@
 package utils;
 
-import org.jcodec.api.awt.AWTSequenceEncoder;   // <<< PERHATIKAN INI
+import org.jcodec.api.awt.AWTSequenceEncoder;
 
 import java.awt.image.BufferedImage;
 import java.io.File;
@@ -8,19 +8,14 @@ import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
-/**
- * MP4 video recorder menggunakan JCodec (AWTSequenceEncoder).
- * Dipakai saat hitungan mundur 3-2-1 di PhotoboothGUI.
- */
 public class VideoRecorder {
+
+    public static final int FPS = 10;   // <<< di sini atur kecepatan video
 
     private AWTSequenceEncoder encoder;
     private boolean recording = false;
     private File outputFile;
 
-    /**
-     * Mulai rekaman video baru di folder ../HasilPhotobooth/Video
-     */
     public void startRecording() {
         try {
             File folder = new File("../HasilPhotobooth/Video");
@@ -33,8 +28,8 @@ public class VideoRecorder {
 
             outputFile = new File(folder, "countdown_" + timestamp + ".mp4");
 
-            // Versi AWTSequenceEncoder di jcodec-javase yg kamu pakai
-            encoder = AWTSequenceEncoder.createSequenceEncoder(outputFile, 1);
+            // encode dengan FPS yang sama dengan preview
+            encoder = AWTSequenceEncoder.createSequenceEncoder(outputFile, FPS);
             recording = true;
 
             System.out.println("[VideoRecorder] Start → " + outputFile.getAbsolutePath());
@@ -47,21 +42,15 @@ public class VideoRecorder {
         }
     }
 
-    /**
-     * Tambah 1 frame ke video (dipanggil terus saat countdown berjalan).
-     */
     public void addFrame(BufferedImage frame) {
         if (!recording || encoder == null || frame == null) return;
         try {
-            encoder.encodeImage(frame);   // method ini ada di AWTSequenceEncoder
+            encoder.encodeImage(frame);
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
-    /**
-     * Stop rekaman dan kembalikan File video yang dihasilkan.
-     */
     public File stopRecording() {
         if (!recording || encoder == null) return null;
 
