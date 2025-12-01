@@ -339,11 +339,6 @@ public class PhotoboothGUI extends JFrame {
         buttonPanel.add(btnSave);
         buttonPanel.add(btnPreviewVideo);
         buttonPanel.add(btnRetake);
-        comboFilter.addActionListener(e -> {
-            String selected = (String) comboFilter.getSelectedItem();
-            FilterStrategy strategy = filterStrategies.get(selected);
-            countdownPainter.setFilter(strategy);
-        });
 
         // =======================
         //  DROPDOWN (BAWAH)
@@ -355,6 +350,14 @@ public class PhotoboothGUI extends JFrame {
             comboFilter.addItem(filterName);
         }
         styleComboBox(comboFilter);
+
+        comboFilter.addActionListener(e -> {
+            String selected = (String) comboFilter.getSelectedItem();
+            FilterStrategy strategy = filterStrategies.getOrDefault(selected, new NoFilterStrategy());
+            if (countdownPainter != null) {
+                countdownPainter.setFilter(strategy);
+            }
+        });
 
         // Combo export
         comboExport = new JComboBox<>(new String[]{"Komputer", "Google Drive"});
@@ -699,18 +702,13 @@ public class PhotoboothGUI extends JFrame {
                 videoRecorder.addFrame(image);
             }
 
-            defaultPainter.paintImage(panel, image, g2);
-
-            if (countdownText == null || countdownText.isEmpty()) return;
-
-            g2.setColor(new Color(0, 0, 0, 150));
             BufferedImage processedImage = image;
             if (currentFilter != null) {
                 processedImage = currentFilter.applyFilter(image);
             }
             defaultPainter.paintImage(panel, processedImage, g2);
 
-            if (countdownText.isEmpty())
+            if (countdownText == null || countdownText.isEmpty()) 
                 return;
 
             g2.setColor(new Color(0, 0, 0, 100));

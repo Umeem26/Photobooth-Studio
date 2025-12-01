@@ -47,20 +47,12 @@ public class PhotoboothService {
      */
     private void initializeTemplates() {
         StripTemplate vertical = templateFactory.createTemplate("TPL-V");
-        StripTemplate square = templateFactory.createTemplate("TPL-SQ");
-        StripTemplate classic = templateFactory.createTemplate("TPL-C");
         StripTemplate horizontal = templateFactory.createTemplate("TPL-H");
-        StripTemplate featured = templateFactory.createTemplate("TPL-F");
-        StripTemplate corners = templateFactory.createTemplate("TPL-COR");
         
         if (vertical != null) availableTemplates.put(vertical.getTemplateId(), vertical);
-        if (square != null) availableTemplates.put(square.getTemplateId(), square);
-        if (classic != null) availableTemplates.put(classic.getTemplateId(), classic);
         if (horizontal != null) availableTemplates.put(horizontal.getTemplateId(), horizontal);
-        if (featured != null) availableTemplates.put(featured.getTemplateId(), featured);
-        if (corners != null) availableTemplates.put(corners.getTemplateId(), corners);
         
-        System.out.println("LOG: 6 Template berhasil dimuat oleh factory.");
+        System.out.println("LOG: 2 Template berhasil dimuat oleh factory.");
     }
     
     // --- METODE UTAMA UNTUK GUI ---
