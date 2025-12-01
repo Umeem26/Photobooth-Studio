@@ -29,7 +29,6 @@ import filter.NoFilterStrategy;
 import filter.VintageFilterStrategy;
 
 import utils.VideoRecorder;
-import utils.VideoPreviewWindow;
 import utils.StripVideoPreviewWindow;
 import utils.StripVideoExporter;
 
@@ -697,35 +696,46 @@ public class PhotoboothGUI extends JFrame {
         }
 
         @Override
-        public void paintImage(WebcamPanel panel, BufferedImage image, Graphics2D g2) {
+            public void paintImage(WebcamPanel panel, BufferedImage image, Graphics2D g2) {
 
-            // kalau sedang merekam, tambahkan frame ke video
-            if (videoRecorder != null && videoRecorder.isRecording()) {
-                videoRecorder.addFrame(image);
+                // 1. Terapkan filter yang sedang dipilih ke frame webcam
+                BufferedImage filteredFrame = image;
+                try {
+                    String selectedFilterName = (String) comboFilter.getSelectedItem();
+                    FilterStrategy strategy = filterStrategies.getOrDefault(
+                            selectedFilterName,
+                            new NoFilterStrategy()
+                    );
+                    filteredFrame = strategy.applyFilter(image);
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                    filteredFrame = image; // fallback kalau filter error
+                }
+
+                // 2. Kalau sedang merekam video, rekam frame yang sudah DIFILTER
+                if (videoRecorder != null && videoRecorder.isRecording()) {
+                    videoRecorder.addFrame(filteredFrame);
+                }
+
+                // 3. Tampilkan frame yang sudah difilter ke panel kamera
+                defaultPainter.paintImage(panel, filteredFrame, g2);
+
+                // 4. Gambar overlay countdown seperti biasa
+                if (countdownText == null || countdownText.isEmpty()) return;
+
+                g2.setColor(new Color(0, 0, 0, 150));
+                g2.fillRect(0, 0, panel.getWidth(), panel.getHeight());
+                
+                g2.setFont(countdownFont);
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                FontMetrics metrics = g2.getFontMetrics(countdownFont);
+                int x = (panel.getWidth() - metrics.stringWidth(countdownText)) / 2;
+                int y = (panel.getHeight() - metrics.getHeight()) / 2 + metrics.getAscent();
+                
+                g2.setColor(new Color(0, 0, 0, 150));
+                g2.drawString(countdownText, x + 5, y + 5);
+                g2.setColor(new Color(255, 255, 255));
+                g2.drawString(countdownText, x, y);
             }
-
-            BufferedImage processedImage = image;
-            if (currentFilter != null) {
-                processedImage = currentFilter.applyFilter(image);
-            }
-            defaultPainter.paintImage(panel, processedImage, g2);
-
-            if (countdownText == null || countdownText.isEmpty()) 
-                return;
-
-            g2.setColor(new Color(0, 0, 0, 100));
-            g2.fillRect(0, 0, panel.getWidth(), panel.getHeight());
-            
-            g2.setFont(countdownFont);
-            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            FontMetrics metrics = g2.getFontMetrics(countdownFont);
-            int x = (panel.getWidth() - metrics.stringWidth(countdownText)) / 2;
-            int y = (panel.getHeight() - metrics.getHeight()) / 2 + metrics.getAscent();
-            
-            g2.setColor(new Color(0, 0, 0, 150));
-            g2.drawString(countdownText, x + 5, y + 5);
-            g2.setColor(new Color(255, 255, 255));
-            g2.drawString(countdownText, x, y);
-        }
     }
 }
