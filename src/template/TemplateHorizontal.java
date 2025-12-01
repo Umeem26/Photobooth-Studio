@@ -63,17 +63,19 @@ public class TemplateHorizontal implements StripTemplate {
 
     @Override
     public BufferedImage getPreviewImage() {
-        int w = 430;
-        int h = 95;
+        int photoWidth = 100;
+        int photoHeight = 75;
+        int padding = 6;
+
+        int w = (photoCount * photoWidth) + ((photoCount + 1) * padding);
+        int h = photoHeight + (2 * padding);
+
         BufferedImage img = new BufferedImage(w, h, BufferedImage.TYPE_INT_RGB);
         Graphics2D g = img.createGraphics();
         g.setColor(Color.WHITE);
         g.fillRect(0, 0, w, h);
         g.setColor(Color.DARK_GRAY);
 
-        int photoWidth = 100;
-        int photoHeight = 75;
-        int padding = 6;
         int currentX = padding;
 
         for (int i = 0; i < photoCount; i++) {

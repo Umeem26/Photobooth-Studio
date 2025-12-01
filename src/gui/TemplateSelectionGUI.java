@@ -22,6 +22,10 @@ public class TemplateSelectionGUI extends JFrame {
     // State Selection
     private String selectedLayoutType; // "VERTICAL" or "HORIZONTAL"
 
+    private JButton btn2Photos;
+    private JButton btn3Photos;
+    private JButton btn4Photos;
+
     // Warna Tema
     private final Color MAIN_BG = new Color(30, 30, 30);
     private final Color CARD_BG = new Color(50, 50, 50);
@@ -76,11 +80,13 @@ public class TemplateSelectionGUI extends JFrame {
 
         btnVertical.addActionListener(e -> {
             selectedLayoutType = "VERTICAL";
+            updatePhotoCountPreviews();
             cardLayout.show(cardPanel, "STEP_2_COUNT");
         });
 
         btnHorizontal.addActionListener(e -> {
             selectedLayoutType = "HORIZONTAL";
+            updatePhotoCountPreviews();
             cardLayout.show(cardPanel, "STEP_2_COUNT");
         });
 
@@ -105,12 +111,13 @@ public class TemplateSelectionGUI extends JFrame {
         lblInstruction.setBorder(new EmptyBorder(30, 0, 30, 0));
         panel.add(lblInstruction, BorderLayout.NORTH);
 
-        JPanel centerPanel = new JPanel(new GridBagLayout());
+        JPanel centerPanel = new JPanel(new GridLayout(1, 3, 20, 20));
         centerPanel.setBackground(MAIN_BG);
+        centerPanel.setBorder(new EmptyBorder(20, 20, 20, 20));
 
-        JButton btn2Photos = createBigOptionButton("2 Foto", null);
-        JButton btn3Photos = createBigOptionButton("3 Foto", null);
-        JButton btn4Photos = createBigOptionButton("4 Foto", null);
+        btn2Photos = createBigOptionButton("2 Foto", null);
+        btn3Photos = createBigOptionButton("3 Foto", null);
+        btn4Photos = createBigOptionButton("4 Foto", null);
 
         // Tombol Kembali
         JButton btnBack = new JButton("KEMBALI");
@@ -126,11 +133,9 @@ public class TemplateSelectionGUI extends JFrame {
         btn3Photos.addActionListener(e -> launchPhotobooth(3));
         btn4Photos.addActionListener(e -> launchPhotobooth(4));
 
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(20, 20, 20, 20);
-        centerPanel.add(btn2Photos, gbc);
-        centerPanel.add(btn3Photos, gbc);
-        centerPanel.add(btn4Photos, gbc);
+        centerPanel.add(btn2Photos);
+        centerPanel.add(btn3Photos);
+        centerPanel.add(btn4Photos);
 
         panel.add(centerPanel, BorderLayout.CENTER);
         return panel;
@@ -155,6 +160,46 @@ public class TemplateSelectionGUI extends JFrame {
         PhotoboothGUI cameraGUI = new PhotoboothGUI(service, finalTemplateId);
         cameraGUI.setVisible(true);
         dispose();
+    }
+
+    private void updatePhotoCountPreviews() {
+        String prefix = "VERTICAL".equals(selectedLayoutType) ? "TPL-V-" : "TPL-H-";
+
+        updateButtonPreview(btn2Photos, prefix + "2");
+        updateButtonPreview(btn3Photos, prefix + "3");
+        updateButtonPreview(btn4Photos, prefix + "4");
+    }
+
+    private void updateButtonPreview(JButton btn, String templateId) {
+        if (!service.getAvailableTemplates().containsKey(templateId)) {
+            StripTemplate tpl = new factory.TemplateFactory().createTemplate(templateId);
+            if (tpl != null) {
+                service.getAvailableTemplates().put(templateId, tpl);
+            }
+        }
+
+        StripTemplate tpl = service.getAvailableTemplates().get(templateId);
+        if (tpl != null) {
+            BufferedImage img = tpl.getPreviewImage();
+            if (img != null) {
+                int targetWidth = 250;
+                int targetHeight;
+
+                if ("HORIZONTAL".equals(selectedLayoutType)) {
+                    targetHeight = (int) ((double) img.getHeight() / img.getWidth() * targetWidth);
+                } else {
+                    targetHeight = 250;
+                    targetHeight = 250;
+                    targetWidth = (int) ((double) img.getWidth() / img.getHeight() * targetHeight);
+                }
+
+                Image scaled = img.getScaledInstance(targetWidth, targetHeight, Image.SCALE_SMOOTH);
+                btn.setIcon(new ImageIcon(scaled));
+                btn.setVerticalTextPosition(SwingConstants.BOTTOM);
+                btn.setHorizontalTextPosition(SwingConstants.CENTER);
+                btn.setIconTextGap(20);
+            }
+        }
     }
 
     // --- HELPERS ---
