@@ -51,6 +51,7 @@ public class PhotoboothGUI extends JFrame {
     private VideoRecorder videoRecorder = new VideoRecorder();
     private File[] videoFiles;
     private JButton btnPreviewVideo;
+    private JButton btnRetake; 
     
     private String selectedTemplateId;
     private int maxPhotos;
@@ -223,6 +224,13 @@ public class PhotoboothGUI extends JFrame {
             }
         });
 
+        // Tombol AMBIL ULANG (RETAKE)
+        btnRetake = new JButton("AMBIL ULANG FOTO");
+        styleButton(btnRetake, new Color(90, 90, 90));
+        btnRetake.setEnabled(false);
+        btnRetake.setVisible(false);
+        btnRetake.addActionListener(e -> retakeLastPhoto());
+
         comboFilter = new JComboBox<>();
         for (String filterName : filterStrategies.keySet()) comboFilter.addItem(filterName);
         styleComboBox(comboFilter);
@@ -235,6 +243,7 @@ public class PhotoboothGUI extends JFrame {
         buttonPanel.add(btnCapture);
         buttonPanel.add(btnSave);
         buttonPanel.add(btnPreviewVideo);
+        buttonPanel.add(btnRetake);
 
         JPanel optionsPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 20, 0));
         optionsPanel.setOpaque(false);
@@ -362,17 +371,21 @@ public class PhotoboothGUI extends JFrame {
         currentCaptureSlot++;
 
         if (currentCaptureSlot < maxPhotos) {
-            // Masih ada foto berikutnya → update teks tombol lalu
-            // OTOMATIS mulai countdown berikutnya
+            // Masih ada slot kosong → siap untuk sesi berikutnya (manual)
             btnCapture.setText("AMBIL FOTO (" + (currentCaptureSlot + 1) + "/" + maxPhotos + ")");
-            startSingleCaptureCountdown();   // <<< AUTO LANJUT SESI BERIKUTNYA
+            btnCapture.setEnabled(true);
+
+            // Sekarang sudah ada minimal 1 foto → boleh ambil ulang
+            btnRetake.setVisible(true);
+            btnRetake.setEnabled(true);
+
         } else {
             // Sudah cukup foto (galeri penuh)
             btnCapture.setText("GALERI PENUH");
             btnCapture.setEnabled(false);
             btnSave.setEnabled(true);
 
-            // Cek kalau ada minimal 1 video rekaman → tampilkan tombol preview
+            // Ada minimal 1 video rekaman?
             boolean hasAnyVideo = false;
             if (videoFiles != null) {
                 for (int i = 0; i < maxPhotos; i++) {
@@ -387,9 +400,62 @@ public class PhotoboothGUI extends JFrame {
                 btnPreviewVideo.setVisible(true);
                 btnPreviewVideo.setEnabled(true);
             }
+
+            // Tetap boleh ambil ulang foto terakhir (misal gak puas dengan 4/4)
+            btnRetake.setVisible(true);
+            btnRetake.setEnabled(true);
         }
     }
 
+    private void retakeLastPhoto() {
+        // Kalau belum ada foto sama sekali, gak ada yang bisa diulang
+        if (currentCaptureSlot <= 0) {
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Belum ada foto yang bisa diulang.",
+                    "Info",
+                    JOptionPane.INFORMATION_MESSAGE
+            );
+            return;
+        }
+
+        // Slot terakhir yang sudah terisi (0-based index)
+        int slotToRetake = currentCaptureSlot - 1;
+
+        // Hapus foto terakhir dari service
+        java.util.List<BufferedImage> list = service.getCapturedImages();
+        if (slotToRetake < list.size()) {
+            list.remove(slotToRetake);
+        }
+
+        // Hapus video terakhir untuk slot itu
+        if (videoFiles != null && slotToRetake < videoFiles.length) {
+            File f = videoFiles[slotToRetake];
+            videoFiles[slotToRetake] = null;
+            // Kalau mau sekalian hapus file fisiknya:
+            // if (f != null && f.exists()) f.delete();
+        }
+
+        // Set kita kembali ke slot itu
+        currentCaptureSlot = slotToRetake;
+
+        // Refresh galeri supaya slot itu jadi kosong lagi
+        updateGallery();
+
+        // Karena jumlah foto berkurang, jangan izinkan save dulu
+        btnSave.setEnabled(false);
+
+        // Preview video juga sembunyikan dulu (supaya tidak bingung)
+        btnPreviewVideo.setVisible(false);
+        btnPreviewVideo.setEnabled(false);
+
+        // Update teks tombol capture ke slot ini
+        btnCapture.setText("AMBIL FOTO (" + (currentCaptureSlot + 1) + "/" + maxPhotos + ")");
+        btnCapture.setEnabled(false); // akan di-enable lagi setelah countdown
+
+        // Mulai countdown lagi untuk slot ini
+        startSingleCaptureCountdown();
+    }
 
     private void updateGallery() {
         int capturedCount = service.getCapturedImages().size();
@@ -443,12 +509,14 @@ public class PhotoboothGUI extends JFrame {
             btnCapture.setBackground(PRIMARY_COLOR); 
             currentCaptureSlot = 0;
             btnCapture.setText("AMBIL FOTO (1/" + maxPhotos + ")");
-
+            
             btnPreviewVideo.setVisible(false);
             btnPreviewVideo.setEnabled(false);
             java.util.Arrays.fill(videoFiles, null);
 
-
+            btnRetake.setVisible(false);
+            btnRetake.setEnabled(false);
+            
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(this, "Error: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
         }
