@@ -29,6 +29,8 @@ import filter.NoFilterStrategy;
 
 import utils.VideoRecorder;
 import utils.VideoPreviewWindow;
+import utils.StripVideoPreviewWindow;
+
 
 public class PhotoboothGUI extends JFrame {
 
@@ -243,12 +245,11 @@ public class PhotoboothGUI extends JFrame {
         btnPreviewVideo = new JButton("PREVIEW VIDEO");
         styleButton(btnPreviewVideo, new Color(70, 70, 70));
         btnPreviewVideo.setEnabled(false);
-        btnPreviewVideo.setVisible(false);
         btnPreviewVideo.addActionListener(e -> {
             java.util.List<String> labels = new java.util.ArrayList<>();
             java.util.List<File> files = new java.util.ArrayList<>();
 
-            // Kumpulkan semua video yang ada
+            // Kumpulkan semua video per sesi
             for (int i = 0; i < maxPhotos; i++) {
                 if (videoFiles != null && videoFiles[i] != null && videoFiles[i].exists()) {
                     labels.add("Video sesi " + (i + 1));
@@ -256,7 +257,28 @@ public class PhotoboothGUI extends JFrame {
                 }
             }
 
-            if (files.isEmpty()) {
+            // cek apakah semua slot punya video → baru tampilkan opsi strip
+            boolean hasFullStrip = true;
+            if (videoFiles == null) {
+                hasFullStrip = false;
+            } else {
+                for (int i = 0; i < maxPhotos; i++) {
+                    if (i >= videoFiles.length ||
+                        videoFiles[i] == null ||
+                        !videoFiles[i].exists()) {
+                        hasFullStrip = false;
+                        break;
+                    }
+                }
+            }
+
+            final String STRIP_LABEL = "Video strip (semua sesi)";
+            if (hasFullStrip && maxPhotos >= 2) {
+                labels.add(STRIP_LABEL);
+                // (tidak ditambah ke files, diproses khusus)
+            }
+
+            if (labels.isEmpty()) {
                 JOptionPane.showMessageDialog(
                         this,
                         "Belum ada video rekaman untuk sesi ini.",
@@ -277,9 +299,25 @@ public class PhotoboothGUI extends JFrame {
             );
 
             if (choice != null) {
-                int idx = labels.indexOf(choice.toString());
-                if (idx >= 0) {
-                    new VideoPreviewWindow(files.get(idx));
+                String chosen = choice.toString();
+                if (chosen.equals(STRIP_LABEL)) {
+                    // pakai template yang sama dengan cetak
+                    StripTemplate tpl = service.getAvailableTemplates().get(selectedTemplateId);
+                    if (tpl != null) {
+                        new StripVideoPreviewWindow(videoFiles, maxPhotos, tpl);
+                    } else {
+                        JOptionPane.showMessageDialog(
+                                this,
+                                "Template video tidak ditemukan.",
+                                "Error",
+                                JOptionPane.ERROR_MESSAGE
+                        );
+                    }
+                } else {
+                    int idx = labels.indexOf(chosen);
+                    if (idx >= 0 && idx < files.size()) {
+                        new VideoPreviewWindow(files.get(idx));
+                    }
                 }
             }
         });
@@ -288,7 +326,6 @@ public class PhotoboothGUI extends JFrame {
         btnRetake = new JButton("AMBIL ULANG FOTO");
         styleButton(btnRetake, new Color(90, 90, 90));
         btnRetake.setEnabled(false);
-        btnRetake.setVisible(false);
         btnRetake.addActionListener(e -> retakeLastPhoto());
 
         // Panel tombol baris atas
@@ -464,7 +501,6 @@ public class PhotoboothGUI extends JFrame {
             btnCapture.setEnabled(true);
 
             // Sekarang sudah ada minimal 1 foto → boleh ambil ulang
-            btnRetake.setVisible(true);
             btnRetake.setEnabled(true);
 
         } else {
@@ -485,12 +521,10 @@ public class PhotoboothGUI extends JFrame {
             }
 
             if (hasAnyVideo) {
-                btnPreviewVideo.setVisible(true);
                 btnPreviewVideo.setEnabled(true);
             }
 
             // Tetap boleh ambil ulang foto terakhir (misal gak puas dengan 4/4)
-            btnRetake.setVisible(true);
             btnRetake.setEnabled(true);
         }
     }
@@ -534,7 +568,6 @@ public class PhotoboothGUI extends JFrame {
         btnSave.setEnabled(false);
 
         // Preview video juga sembunyikan dulu (supaya tidak bingung)
-        btnPreviewVideo.setVisible(false);
         btnPreviewVideo.setEnabled(false);
 
         // Update teks tombol capture ke slot ini
@@ -598,11 +631,9 @@ public class PhotoboothGUI extends JFrame {
             currentCaptureSlot = 0;
             btnCapture.setText("AMBIL FOTO (1/" + maxPhotos + ")");
             
-            btnPreviewVideo.setVisible(false);
             btnPreviewVideo.setEnabled(false);
             java.util.Arrays.fill(videoFiles, null);
 
-            btnRetake.setVisible(false);
             btnRetake.setEnabled(false);
 
         } catch (Exception ex) {
