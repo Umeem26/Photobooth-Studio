@@ -333,19 +333,17 @@ public class PhotoboothGUI extends JFrame {
         btnRetake.addActionListener(e -> retakeLastPhoto());
 
         // Panel tombol baris atas
-        JPanel buttonPanel = new JPanel(new GridLayout(1, 4, 20, 0));
-        comboFilter.addActionListener(e -> {
-            String selected = (String) comboFilter.getSelectedItem();
-            FilterStrategy strategy = filterStrategies.get(selected);
-            countdownPainter.setFilter(strategy);
-        });
-
         JPanel buttonPanel = new JPanel(new GridLayout(1, 2, 20, 0));
         buttonPanel.setOpaque(false);
         buttonPanel.add(btnCapture);
         buttonPanel.add(btnSave);
         buttonPanel.add(btnPreviewVideo);
         buttonPanel.add(btnRetake);
+        comboFilter.addActionListener(e -> {
+            String selected = (String) comboFilter.getSelectedItem();
+            FilterStrategy strategy = filterStrategies.get(selected);
+            countdownPainter.setFilter(strategy);
+        });
 
         // =======================
         //  DROPDOWN (BAWAH)
