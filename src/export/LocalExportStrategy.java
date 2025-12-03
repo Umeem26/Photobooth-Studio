@@ -11,6 +11,7 @@ public class LocalExportStrategy implements ExportStrategy {
     @Override
     public String getStrategyName() { return "Komputer"; }
 
+    // Update signature method agar sesuai interface
     @Override
     public boolean export(BufferedImage image, File videoFile) {
         System.out.println("LOG: Menjalankan strategi Ekspor Lokal...");
@@ -34,7 +35,10 @@ public class LocalExportStrategy implements ExportStrategy {
             try {
                 ImageIO.write(image, "PNG", fileToSave);
                 System.out.println("SUKSES: Gambar disimpan ke: " + fileToSave.getAbsolutePath());
-                // Video sudah disimpan oleh Exporter di folder Video, jadi tidak perlu dipindah lagi di sini
+                
+                // Video sudah otomatis tersimpan di folder Video oleh Exporter
+                // Jadi kita tidak perlu memindahkannya secara manual di sini untuk versi Lokal
+                
                 return true;
             } catch (Exception e) {
                 System.err.println("ERROR: " + e.getMessage());

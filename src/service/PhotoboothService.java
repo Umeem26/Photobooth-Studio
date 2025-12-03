@@ -101,7 +101,7 @@ public class PhotoboothService {
     public void saveFinalImage(ExportStrategy strategy, BufferedImage finalImage, File videoFile) throws ExportFailedException {
         System.out.println("LOG: Service memanggil " + strategy.getStrategyName());
         
-        // Pass videoFile ke strategy
+        // Panggil method export yang baru (dengan 2 parameter)
         boolean success = strategy.export(finalImage, videoFile);
         
         if (!success) {
