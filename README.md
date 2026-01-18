@@ -1,13 +1,12 @@
-# 📸 SixSeven Photobooth Studio Pro
-
-![Java](https://img.shields.io/badge/Java-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white)
-![Swing](https://img.shields.io/badge/Swing-GUI-red?style=for-the-badge)
-![Google Drive](https://img.shields.io/badge/Google%20Drive%20API-4285F4?style=for-the-badge&logo=google-drive&logoColor=white)
-![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)
-
-> Aplikasi Photobooth Desktop modern dengan fitur integrasi Cloud, QR Code, dan berbagai template estetis. Dibangun dengan konsep *Clean Architecture* dan *Object-Oriented Design Patterns*.
-
----
+<div align="center">
+  <img src="https://img.shields.io/badge/Java-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white" />
+  <img src="https://img.shields.io/badge/Architecture-Clean%20Code-blue?style=for-the-badge" />
+  <img src="https://img.shields.io/badge/Pattern-5%20Design%20Patterns-7b2cbf?style=for-the-badge" />
+  
+  <br />
+  <h1>📸 SixSeven Photobooth Studio Pro</h1>
+  <p><i>Modern Desktop Photobooth with Cloud Integration & Aesthetic Templates.</i></p>
+</div>
 
 ## ✨ Fitur Utama
 
