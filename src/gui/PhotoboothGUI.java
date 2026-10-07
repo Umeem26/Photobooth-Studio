@@ -14,7 +14,6 @@ import service.PhotoboothService;
 import model.StripTemplate;
 import export.ExportStrategy;
 import export.LocalExportStrategy;
-import export.DriveExportStrategy;
 
 import com.github.sarxos.webcam.WebcamPanel;
 import com.github.sarxos.webcam.WebcamPanel.Painter; 
@@ -326,7 +325,7 @@ public class PhotoboothGUI extends JFrame {
         });
 
         // Combo export
-        comboExport = new JComboBox<>(new String[]{"Komputer", "Google Drive"});
+        comboExport = new JComboBox<>(new String[]{"Komputer"});
         styleComboBox(comboExport);
 
         // comboCamera DIASUMSIKAN sudah dibuat & di-style di tempat lain
@@ -602,22 +601,13 @@ private void saveStripProcess() {
             }
 
             // 4. PILIH STRATEGI & EKSEKUSI PENYIMPANAN
-            ExportStrategy strategy;
-            String selectedExport = (String) comboExport.getSelectedItem();
-            if ("Google Drive".equals(selectedExport)) {
-                strategy = new DriveExportStrategy();
-            } else {
-                strategy = new LocalExportStrategy();
-            }
+            ExportStrategy strategy = new LocalExportStrategy();
 
             // PASS VIDEO FILE KE SERVICE
             service.saveFinalImage(strategy, finalStrip, stripVideoFile);
 
             // 5. Feedback & Reset
-            if (!"Google Drive".equals(selectedExport)) {
-               // Kalau lokal, kasih info manual (kalau drive kan sudah ada QR code)
-               JOptionPane.showMessageDialog(this, "Berhasil disimpan!");
-            }
+            JOptionPane.showMessageDialog(this, "Berhasil disimpan!");
 
             // Reset GUI
             service.clearCapturedImages();
