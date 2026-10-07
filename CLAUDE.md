@@ -21,3 +21,10 @@ Aplikasi photobooth desktop Java Swing. Fondasi: repo tugas besar PBO "Photoboot
 
 - `src/main/java`: `MainApp` (default package), `gui`, `service` (Facade), `hardware` (kamera), `factory`, `template`, `filter`, `export`, `repository`, `config`, `utils`, `exception`.
 - Konfigurasi: `src/main/resources/config.properties` (default output `~/VanDeBooth`), bisa ditimpa `./config.properties` atau `-Dvandebooth.output.dir=...`.
+
+## Aturan UI (Fase 2+)
+
+- Sebelum mengerjakan UI baca docs/ (design-system.md, flow.md, architecture.md, mockups/).
+- UI berbahasa Inggris lewat strings.ts.
+- Warna hanya dari token; tanpa gradasi dan emoji.
+- Tombol >= 96 px pada kanvas 1920x1080.
