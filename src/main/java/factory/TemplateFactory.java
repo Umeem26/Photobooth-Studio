@@ -3,8 +3,20 @@ package factory;
 import model.StripTemplate;
 import template.TemplateVertical;
 import template.TemplateHorizontal;
+import template.BrandedStripTemplate;
+import template.StripLayout;
 
 public class TemplateFactory {
+
+    /**
+     * Membuat strip bermerek Fase 2 (vertical-4, vertical-3, horizontal-3) dengan caption footer.
+     * Mengembalikan null bila ID tidak dikenali.
+     */
+    public StripTemplate createTemplate(String templateId, String caption) {
+        return StripLayout.byId(templateId)
+                .<StripTemplate>map(layout -> new BrandedStripTemplate(layout, caption))
+                .orElseGet(() -> createTemplate(templateId));
+    }
 
     public StripTemplate createTemplate(String templateId) {
         if (templateId == null || templateId.isEmpty()) {
