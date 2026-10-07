@@ -17,3 +17,6 @@ screenshots/desktop.ini
 # Abaikan file hasil output
 *.png
 *.jpg
+
+# Maven
+target/
