@@ -18,9 +18,6 @@ import export.LocalExportStrategy;
 import com.github.sarxos.webcam.WebcamPanel;
 import com.github.sarxos.webcam.WebcamPanel.Painter; 
 
-import javax.sound.sampled.AudioInputStream;
-import javax.sound.sampled.AudioSystem;
-import javax.sound.sampled.Clip;
 
 import filter.FilterStrategy;
 import filter.GrayscaleFilterStrategy;
@@ -674,22 +671,6 @@ private void saveStripProcess() {
         cause.printStackTrace();
     }
 
-    private void playSound(String soundFileName) {
-        if (soundFileName.toLowerCase().endsWith(".wav")) {
-            try {
-                File soundFile = new File(soundFileName);
-                if (soundFile.exists()) {
-                    AudioInputStream audioIn = AudioSystem.getAudioInputStream(soundFile.toURI().toURL());
-                    Clip clip = AudioSystem.getClip();
-                    clip.open(audioIn);
-                    clip.start();
-                }
-            } catch (Exception e) {
-                System.err.println("Error audio: " + e.getMessage());
-            }
-        }
-    }
-    
     private class CountdownPainter implements WebcamPanel.Painter {
         private Painter defaultPainter;
         private String countdownText = "";

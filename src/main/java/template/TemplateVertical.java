@@ -14,11 +14,6 @@ public class TemplateVertical implements StripTemplate {
         this.photoCount = photoCount;
     }
 
-    // Default constructor for backward compatibility or default usage
-    public TemplateVertical() {
-        this(4);
-    }
-
     @Override
     public String getTemplateName() {
         return "Strip Vertikal (" + photoCount + " Foto)";

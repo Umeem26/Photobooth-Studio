@@ -14,10 +14,6 @@ public class TemplateHorizontal implements StripTemplate {
         this.photoCount = photoCount;
     }
 
-    public TemplateHorizontal() {
-        this(4);
-    }
-
     @Override
     public String getTemplateName() {
         return "Strip Horizontal (" + photoCount + " Foto)";
