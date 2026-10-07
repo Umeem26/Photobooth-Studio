@@ -446,7 +446,13 @@ public class PhotoboothGUI extends JFrame {
 
     private void takeSinglePicture() {
         // Ambil gambar dari kamera
-        BufferedImage rawImage = service.captureImage();
+        BufferedImage rawImage;
+        try {
+            rawImage = service.captureImage();
+        } catch (exception.CameraException ex) {
+            rawImage = null;
+            System.err.println("Kamera: " + ex.getMessage());
+        }
         if (rawImage == null) {
             JOptionPane.showMessageDialog(this,
                     "Gagal mengambil gambar dari kamera.",

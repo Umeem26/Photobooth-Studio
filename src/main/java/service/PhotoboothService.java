@@ -1,11 +1,13 @@
 package service;
 
+import hardware.Camera;
 import hardware.CameraManager; // Singleton
 import factory.TemplateFactory; // Factory
 import export.ExportStrategy; // Strategy
 import model.StripTemplate;
 import exception.TemplateNotFoundException;
 import exception.ExportFailedException;
+import exception.CameraException;
 
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
@@ -20,7 +22,7 @@ import java.io.File;
 public class PhotoboothService {
 
     // 1. Referensi ke semua Design Pattern
-    private CameraManager cameraManager;
+    private final Camera camera;
     private TemplateFactory templateFactory;
     
     // 2. Daftar gambar yang ditangkap
@@ -29,10 +31,15 @@ public class PhotoboothService {
     // 3. Daftar template yang tersedia (untuk GUI)
     private Map<String, StripTemplate> availableTemplates;
 
-    // Constructor
+    // Constructor default: memakai webcam asli (Singleton, dibuka lazy)
     public PhotoboothService() {
-        // Ambil instance dari Singleton dan Factory
-        this.cameraManager = CameraManager.getInstance();
+        this(CameraManager.getInstance());
+    }
+
+    // Constructor untuk injeksi kamera (mis. kamera palsu di test)
+    public PhotoboothService(Camera camera) {
+        if (camera == null) throw new IllegalArgumentException("camera tidak boleh null");
+        this.camera = camera;
         this.templateFactory = new TemplateFactory();
         
         this.capturedImages = new ArrayList<>();
@@ -61,9 +68,8 @@ public class PhotoboothService {
     /**
      * Mengambil satu gambar dari kamera.
      */
-    public BufferedImage captureImage() {
-        BufferedImage image = cameraManager.takePicture();
-        return image;
+    public BufferedImage captureImage() throws CameraException {
+        return camera.capture();
     }
 
     /**
@@ -120,7 +126,13 @@ public class PhotoboothService {
         return availableTemplates;
     }
     
+    /**
+     * Akses webcam untuk live preview GUI. Hanya tersedia bila service memakai CameraManager.
+     */
     public CameraManager getCameraManager() {
-        return cameraManager;
+        if (camera instanceof CameraManager) {
+            return (CameraManager) camera;
+        }
+        throw new IllegalStateException("Service tidak memakai CameraManager");
     }
 }

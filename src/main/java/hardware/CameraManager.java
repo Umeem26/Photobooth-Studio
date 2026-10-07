@@ -2,106 +2,119 @@ package hardware;
 
 import com.github.sarxos.webcam.Webcam;
 import com.github.sarxos.webcam.WebcamResolution;
-import java.awt.Dimension;
+import exception.CameraException;
 import java.awt.image.BufferedImage;
-import java.io.IOException;
 import java.util.List;
 
-// Ini adalah Design Pattern #2: Singleton (versi baru)
-public class CameraManager {
-    
-    // 1. Satu-satunya instance (static)
-    private static CameraManager instance;
-    
-    // 2. Objek hardware yang dipegang oleh Singleton
+/**
+ * Singleton (thread-safe, initialization-on-demand holder) pengendali webcam.
+ * Webcam baru dicari saat pertama dibutuhkan dan baru dibuka saat capture,
+ * sehingga membuat instance tidak menyentuh hardware.
+ */
+public final class CameraManager implements Camera {
+
+    private static final class Holder {
+        private static final CameraManager INSTANCE = new CameraManager();
+    }
+
     private Webcam webcam;
 
-    // 3. Constructor dibuat PRIVATE
     private CameraManager() {
-        System.out.println("LOG: CameraManager diinisialisasi...");
-        try {
-            // Mengambil webcam default
-            webcam = Webcam.getDefault();
-            
-            if (webcam == null) {
-                System.err.println("FATAL: Tidak ada webcam ditemukan.");
-                // Nanti kita ganti dengan throw new CameraNotFoundException()
-                return; 
-            }
-            
-            // Atur resolusi (bisa disesuaikan)
-            Dimension size = WebcamResolution.VGA.getSize();
-            webcam.setViewSize(size);
-
-            // Buka koneksi ke kamera
-            if (!webcam.open()) {
-                System.err.println("FATAL: Gagal membuka kamera.");
-                // Nanti kita ganti dengan throw new CameraException()
-            }
-            
-        } catch (Exception e) {
-            System.err.println("FATAL: Error inisialisasi kamera: " + e.getMessage());
-        }
     }
 
-    // 4. Method public (static) untuk mendapatkan satu-satunya instance
     public static CameraManager getInstance() {
-        if (instance == null) {
-            instance = new CameraManager();
-        }
-        return instance;
+        return Holder.INSTANCE;
     }
 
-    // 5. Method utama untuk mengambil gambar
-    public BufferedImage takePicture() {
-        if (webcam == null || !webcam.isOpen()) {
-            System.err.println("ERROR: Kamera tidak siap.");
-            return null;
+    @Override
+    public synchronized BufferedImage capture() throws CameraException {
+        Webcam cam = requireWebcam();
+        if (!cam.isOpen()) {
+            boolean opened;
+            try {
+                opened = cam.open();
+            } catch (RuntimeException e) {
+                throw new CameraException("Gagal membuka kamera: " + cam.getName(), e);
+            }
+            if (!opened) {
+                throw new CameraException("Gagal membuka kamera: " + cam.getName());
+            }
         }
-        
-        System.out.println("LOG: Mengambil gambar...");
-        return webcam.getImage();
-    }
-    
-    // Method untuk GUI (live preview)
-    public Webcam getWebcam() {
-        return this.webcam;
+        BufferedImage image = cam.getImage();
+        if (image == null) {
+            throw new CameraException("Kamera tidak mengembalikan gambar: " + cam.getName());
+        }
+        return image;
     }
 
-    // Method untuk menutup kamera saat aplikasi ditutup
-    public void closeCamera() {
+    /**
+     * Webcam aktif untuk live preview GUI (dicari lazy, belum tentu terbuka).
+     * Mengembalikan null bila tidak ada webcam terdeteksi.
+     */
+    public synchronized Webcam getWebcam() {
+        if (webcam == null) {
+            try {
+                webcam = resolveDefault();
+            } catch (CameraException e) {
+                return null;
+            }
+        }
+        return webcam;
+    }
+
+    private Webcam requireWebcam() throws CameraException {
+        if (webcam == null) {
+            webcam = resolveDefault();
+        }
+        return webcam;
+    }
+
+    private static Webcam resolveDefault() throws CameraException {
+        Webcam found;
+        try {
+            found = Webcam.getDefault();
+        } catch (RuntimeException e) {
+            throw new CameraException("Gagal mendeteksi webcam", e);
+        }
+        if (found == null) {
+            throw new CameraException("Tidak ada webcam ditemukan");
+        }
+        if (!found.isOpen()) {
+            found.setViewSize(WebcamResolution.VGA.getSize());
+        }
+        return found;
+    }
+
+    @Override
+    public synchronized void close() {
         if (webcam != null && webcam.isOpen()) {
             webcam.close();
-            System.out.println("LOG: Kamera ditutup.");
         }
     }
 
-        /**
-     * Mengembalikan daftar semua webcam yang terdeteksi.
-     */
+    /** Alias lama yang dipakai GUI saat jendela ditutup. */
+    public void closeCamera() {
+        close();
+    }
+
+    /** Daftar semua webcam yang terdeteksi. */
     public List<Webcam> getDetectedWebcams() {
         return Webcam.getWebcams();
     }
 
     /**
-     * Ganti kamera yang digunakan seluruh aplikasi.
-     * Dipakai oleh GUI ketika user memilih kamera berbeda dari dropdown.
+     * Ganti kamera yang digunakan seluruh aplikasi (dipakai dropdown kamera di GUI).
      */
-    public void switchToWebcam(Webcam newWebcam) {
-        if (newWebcam == null) return;
-        if (this.webcam == newWebcam) return;
+    public synchronized void switchToWebcam(Webcam newWebcam) {
+        if (newWebcam == null || this.webcam == newWebcam) return;
 
-        // Tutup kamera lama
         if (this.webcam != null && this.webcam.isOpen()) {
             this.webcam.close();
         }
-
-        // Set kamera baru
         this.webcam = newWebcam;
-        this.webcam.setViewSize(WebcamResolution.VGA.getSize());
-        this.webcam.open(true);
-
-        System.out.println("LOG: Berpindah ke kamera: " + this.webcam.getName());
+        if (!newWebcam.isOpen()) {
+            newWebcam.setViewSize(WebcamResolution.VGA.getSize());
+        }
+        newWebcam.open(true);
     }
-
 }
