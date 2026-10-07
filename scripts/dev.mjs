@@ -46,10 +46,12 @@ start(isWin ? 'npm.cmd' : 'npm', ['run', 'dev', '--workspace', '@vandebooth/ui']
 await waitForUrl(DEV_URL);
 
 const electron = createRequire(import.meta.url)('electron');
+// ELECTRON_RUN_AS_NODE (disetel sebagian editor) membuat Electron berjalan sebagai Node biasa
+const { ELECTRON_RUN_AS_NODE: _ignored, ...electronEnv } = process.env;
 const app = spawn(electron, ['desktop', ...process.argv.slice(2)], {
   cwd: ROOT,
   stdio: 'inherit',
-  env: { ...process.env, VITE_DEV_SERVER_URL: DEV_URL },
+  env: { ...electronEnv, VITE_DEV_SERVER_URL: DEV_URL },
 });
 children.push(app);
 app.on('exit', (code) => shutdown(code ?? 0));
