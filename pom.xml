@@ -8,15 +8,13 @@
     <artifactId>vandebooth</artifactId>
     <version>0.2.0-SNAPSHOT</version>
     <name>Van de Booth</name>
-    <description>Aplikasi photobooth desktop (Java Swing)</description>
+    <description>Sidecar Java Van de Booth (komposisi strip, sesi, export) untuk UI Electron</description>
 
     <properties>
         <maven.compiler.release>17</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <main.class>MainApp</main.class>
-
-        <flatlaf.version>3.6.2</flatlaf.version>
         <webcam-capture.version>0.3.12</webcam-capture.version>
         <zxing.version>3.5.1</zxing.version>
         <jcodec.version>0.2.5</jcodec.version>
@@ -26,11 +24,6 @@
     </properties>
 
     <dependencies>
-        <dependency>
-            <groupId>com.formdev</groupId>
-            <artifactId>flatlaf</artifactId>
-            <version>${flatlaf.version}</version>
-        </dependency>
         <dependency>
             <groupId>com.github.sarxos</groupId>
             <artifactId>webcam-capture</artifactId>

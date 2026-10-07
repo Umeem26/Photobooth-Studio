@@ -14,12 +14,13 @@ Aplikasi photobooth desktop Java Swing. Fondasi: repo tugas besar PBO "Photoboot
 ## Build
 
 - `./mvnw -q verify` (Windows: `mvnw.cmd -q verify`) menjalankan test dan membuat `target/vandebooth.jar`.
-- Jalankan: `java -jar target/vandebooth.jar`. Java 17.
+- Jalankan aplikasi: `npm run dev`. Sidecar saja: `VANDEBOOTH_TOKEN=... java -jar target/vandebooth.jar --server`. Java 17.
 - Test harus headless (tanpa webcam/GUI).
 
 ## Struktur
 
-- `src/main/java`: `MainApp` (default package), `gui`, `service` (Facade), `hardware` (kamera), `factory`, `template`, `filter`, `export`, `repository`, `config`, `utils`, `exception`.
+- `src/main/java`: `MainApp` (default package, mode `--server`), `server` (sidecar HTTP), `service` (Facade), `hardware` (kamera), `factory`, `template`, `filter`, `export`, `repository`, `config`, `utils`, `exception`. GUI Swing lama ada di tag `legacy-swing-ui`.
+- `ui/` (React + Vite + TS), `desktop/` (Electron), `e2e/` (Playwright), `docs/` (spesifikasi, mockup, screenshot). Skrip root: `npm run dev|build|test|e2e`.
 - Konfigurasi: `src/main/resources/config.properties` (default output `~/VanDeBooth`), bisa ditimpa `./config.properties` atau `-Dvandebooth.output.dir=...`.
 
 ## Aturan UI (Fase 2+)
