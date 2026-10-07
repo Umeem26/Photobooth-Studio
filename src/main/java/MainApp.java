@@ -12,7 +12,12 @@ import com.formdev.flatlaf.FlatDarkLaf;
  */
 public class MainApp {
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws Exception {
+        if (java.util.Arrays.asList(args).contains("--server")) {
+            server.SidecarMain.run(args);
+            return;
+        }
+
         
         // 2. AKTIFKAN TEMA FLATLAF (DARK MODE)
         try {

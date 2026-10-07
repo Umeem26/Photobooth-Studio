@@ -11,9 +11,12 @@ import repository.SessionRepository;
 import exception.TemplateNotFoundException;
 import exception.ExportFailedException;
 import exception.CameraException;
+import exception.BoothException;
+import template.StripLayout;
 
 import java.awt.image.BufferedImage;
 import java.io.File;
+import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -36,6 +39,7 @@ public class PhotoboothService {
     private final TemplateFactory templateFactory;
     private final SessionRepository sessionRepository;
     private final ExecutorService executor;
+    private final SessionManager sessionManager;
 
     // Daftar gambar yang ditangkap (diubah dari thread GUI)
     private final ArrayList<BufferedImage> capturedImages;
@@ -54,6 +58,11 @@ public class PhotoboothService {
     }
 
     public PhotoboothService(Camera camera, SessionRepository sessionRepository, ExecutorService executor) {
+        this(camera, sessionRepository, executor, AppConfig.get());
+    }
+
+    public PhotoboothService(Camera camera, SessionRepository sessionRepository, ExecutorService executor,
+                             AppConfig config) {
         if (camera == null) throw new IllegalArgumentException("camera tidak boleh null");
         if (sessionRepository == null) throw new IllegalArgumentException("sessionRepository tidak boleh null");
         if (executor == null) throw new IllegalArgumentException("executor tidak boleh null");
@@ -61,12 +70,30 @@ public class PhotoboothService {
         this.sessionRepository = sessionRepository;
         this.executor = executor;
         this.templateFactory = new TemplateFactory();
+        this.sessionManager = new SessionManager(sessionRepository, config);
 
         this.capturedImages = new ArrayList<>();
         this.availableTemplates = new HashMap<>();
 
         // Panggil factory untuk memuat template
         initializeTemplates();
+    }
+
+    /**
+     * Facade untuk mode sidecar: kamera dikelola UI (getUserMedia), jadi kamera lokal tidak dipakai.
+     */
+    public static PhotoboothService forSidecar(AppConfig config) {
+        Camera remote = new Camera() {
+            @Override
+            public BufferedImage capture() throws CameraException {
+                throw new CameraException("Mode sidecar: kamera dikelola UI");
+            }
+
+            @Override
+            public void close() {
+            }
+        };
+        return new PhotoboothService(remote, new SessionRepository(config.sessionsDir()), newWorkerExecutor(), config);
     }
 
     private static ExecutorService newWorkerExecutor() {
@@ -200,6 +227,48 @@ public class PhotoboothService {
     /** Menghentikan worker background (tugas yang sedang berjalan dibiarkan selesai). */
     public void shutdown() {
         executor.shutdown();
+    }
+
+    // --- Sesi booth yang dikendalikan UI (sidecar Fase 2) ---
+
+    public AppConfig getConfig() {
+        return sessionManager.config();
+    }
+
+    public List<StripLayout> getLayouts() {
+        return List.of(StripLayout.values());
+    }
+
+    public List<BoothFilter> getFilters() {
+        return List.of(BoothFilter.values());
+    }
+
+    public String createSession(String layoutId) throws BoothException, IOException {
+        return sessionManager.createSession(layoutId);
+    }
+
+    public void putFrame(String sessionId, int index, byte[] jpeg) throws BoothException, IOException {
+        sessionManager.putFrame(sessionId, index, jpeg);
+    }
+
+    public byte[] getFrame(String sessionId, int index) throws BoothException {
+        return sessionManager.getFrame(sessionId, index);
+    }
+
+    public SessionManager.ComposeResult compose(String sessionId, String filterId) throws BoothException, IOException {
+        return sessionManager.compose(sessionId, filterId);
+    }
+
+    public Path getStripPath(String sessionId) throws BoothException {
+        return sessionManager.stripPath(sessionId);
+    }
+
+    public Path exportLocal(String sessionId) throws BoothException, IOException {
+        return sessionManager.exportLocal(sessionId);
+    }
+
+    public void abandon(String sessionId) throws BoothException, IOException {
+        sessionManager.abandon(sessionId);
     }
 
     // --- Getter untuk GUI ---

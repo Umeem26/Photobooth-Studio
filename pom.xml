@@ -6,7 +6,7 @@
 
     <groupId>id.vandebooth</groupId>
     <artifactId>vandebooth</artifactId>
-    <version>0.1.0-SNAPSHOT</version>
+    <version>0.2.0-SNAPSHOT</version>
     <name>Van de Booth</name>
     <description>Aplikasi photobooth desktop (Java Swing)</description>
 
@@ -21,6 +21,7 @@
         <zxing.version>3.5.1</zxing.version>
         <jcodec.version>0.2.5</jcodec.version>
         <slf4j.version>2.0.13</slf4j.version>
+        <gson.version>2.11.0</gson.version>
         <junit.version>5.11.4</junit.version>
     </properties>
 
@@ -62,6 +63,12 @@
         </dependency>
 
         <dependency>
+            <groupId>com.google.code.gson</groupId>
+            <artifactId>gson</artifactId>
+            <version>${gson.version}</version>
+        </dependency>
+
+        <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
             <version>${junit.version}</version>
@@ -71,6 +78,16 @@
 
     <build>
         <finalName>vandebooth</finalName>
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>false</filtering>
+            </resource>
+            <resource>
+                <directory>src/main/resources-filtered</directory>
+                <filtering>true</filtering>
+            </resource>
+        </resources>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
