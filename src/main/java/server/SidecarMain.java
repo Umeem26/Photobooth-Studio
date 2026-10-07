@@ -1,7 +1,7 @@
 package server;
 
-import config.AppConfig;
-import service.PhotoboothService;
+import config.ConfigStore;
+import print.PrinterResolver;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -37,15 +37,10 @@ public final class SidecarMain {
         }
 
         System.setProperty("java.awt.headless", "true");
-        PhotoboothService service = PhotoboothService.forSidecar(AppConfig.get());
-        SidecarServer server = new SidecarServer(service, token, port);
-        server.start();
-        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            server.stop();
-            service.shutdown();
-        }, "sidecar-shutdown"));
+        SidecarApp app = SidecarApp.start(ConfigStore.load(), PrinterResolver.system(), token, port);
+        Runtime.getRuntime().addShutdownHook(new Thread(app::close, "sidecar-shutdown"));
 
-        System.out.println(READY_PREFIX + server.port());
+        System.out.println(READY_PREFIX + app.port());
         System.out.flush();
 
         if (exitOnStdinEof) {

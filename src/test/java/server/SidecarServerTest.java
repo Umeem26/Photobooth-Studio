@@ -11,7 +11,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import config.AppConfig;
-import service.PhotoboothService;
+import config.ConfigStore;
 
 import java.awt.Color;
 import java.awt.Graphics2D;
@@ -34,8 +34,7 @@ class SidecarServerTest {
     @TempDir
     Path tmp;
 
-    private PhotoboothService service;
-    private SidecarServer server;
+    private SidecarApp app;
     private HttpClient http;
     private String base;
 
@@ -46,17 +45,16 @@ class SidecarServerTest {
         p.setProperty(AppConfig.EVENT_NAME_KEY, "Sample event");
         p.setProperty(AppConfig.EVENT_DATE_KEY, "2026-10-12");
         p.setProperty(AppConfig.MAX_RETAKES_KEY, "2");
-        service = PhotoboothService.forSidecar(AppConfig.fromProperties(p));
-        server = new SidecarServer(service, TOKEN, 0);
-        server.start();
+        p.setProperty(AppConfig.SHARE_BIND_KEY, "127.0.0.1");
+        p.setProperty(AppConfig.SHARE_PORT_KEY, "0");
+        app = SidecarApp.start(ConfigStore.of(p, tmp.resolve("cfg")), new FakePrinters(), TOKEN, 0);
         http = HttpClient.newHttpClient();
-        base = "http://127.0.0.1:" + server.port();
+        base = "http://127.0.0.1:" + app.port();
     }
 
     @AfterEach
     void stop() {
-        server.stop();
-        service.shutdown();
+        app.close();
     }
 
     // ------------------------------------------------------------- helpers
@@ -284,7 +282,8 @@ class SidecarServerTest {
     @Test
     void unknownEndpointIs404AndServerBindsLoopbackOnly() throws Exception {
         assertError(send("GET", "/api/nope", (String) null), 404, "not_found");
-        assertThrows(IllegalArgumentException.class, () -> new SidecarServer(service, "pendek", 0));
+        assertThrows(IllegalArgumentException.class,
+                () -> new SidecarServer(app.service(), app.admin(), "pendek", 0));
     }
 
     @Test

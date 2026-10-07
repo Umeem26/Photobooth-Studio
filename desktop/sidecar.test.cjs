@@ -31,7 +31,12 @@ test('sidecar starts on a random port, requires the token, and exits when stoppe
   { skip: !fs.existsSync(JAR) && 'target/vandebooth.jar belum dibuat (npm run build)' },
   async () => {
     const out = fs.mkdtempSync(path.join(os.tmpdir(), 'vdb-desktop-'));
-    const sidecar = await startSidecar({ jar: JAR, javaArgs: [`-Dvandebooth.output.dir=${out}`] });
+    const sidecar = await startSidecar({ jar: JAR, javaArgs: [
+      `-Dvandebooth.output.dir=${out}`,
+      `-Dvandebooth.config.dir=${path.join(out, 'cfg')}`,
+      '-Dvandebooth.share.bindAddress=127.0.0.1',
+      '-Dvandebooth.share.port=0',
+    ] });
     try {
       assert.ok(sidecar.port > 0);
       const health = await getHealth(sidecar.port, sidecar.token);
