@@ -1,0 +1,57 @@
+/* Van de Booth design tokens (docs/design-system.md). Komponen hanya memakai var() dari file ini. */
+:root {
+  /* Warna */
+  --cream: #F7EFE2;
+  --paper: #FFFBF3;
+  --ink: #241B16;
+  --ink-2: #6B5D52;
+  --verm: #D9411E;
+  --butter: #F4C95D;
+  --line: #E4D6C0;
+  --tint: #EFE2CC;
+  --strip-white: #FFFFFF;              /* kertas strip, flash (mockup) */
+  --paper-94: rgba(255, 251, 243, 0.94); /* chip di atas kamera */
+  --paper-96: rgba(255, 251, 243, 0.96); /* chip, disc di atas kamera */
+  --scrim: rgba(36, 27, 22, 0.45);     /* latar dialog konfirmasi */
+
+  /* Palet ilustrasi dekoratif (mockup layar sambut dan layout) */
+  --illu-sand: #F2D9B8;
+  --illu-sage: #CFE0D2;
+  --illu-blush: #F3C9BC;
+  --illu-lilac: #D6D2EA;
+  --illu-skin-1: #E8B58F;
+  --illu-skin-2: #8D5A3C;
+  --illu-skin-3: #C98B62;
+  --illu-skin-4: #F1C9A5;
+  --illu-hair-1: #4A2E1F;
+  --illu-hair-2: #7A4B2A;
+  --illu-hair-3: #1A1412;
+  --illu-teal: #2F5D62;
+  --illu-plum: #6C4E9E;
+  --illu-green: #3E7C59;
+
+  /* Bayangan (hanya daftar ini) */
+  --shadow-strip: 0 18px 40px rgba(36, 27, 22, 0.18);
+  --shadow-preview: 0 30px 70px rgba(36, 27, 22, 0.22);
+  --shadow-selected: 0 26px 60px rgba(217, 65, 30, 0.22);
+  --shadow-thumb: 0 14px 34px rgba(36, 27, 22, 0.25);
+
+  /* Radius */
+  --r-card: 44px;
+  --r-preview: 56px;
+  --r-camera: 64px;
+  --r-inner: 28px;
+  --r-pill: 999px;
+  --r-photo: 6px;
+
+  /* Tipografi */
+  --font-serif: 'Fraunces Variable', 'Fraunces', serif;
+  --font-sans: 'Plus Jakarta Sans Variable', 'Plus Jakarta Sans', sans-serif;
+
+  /* Gerak */
+  --dur-fast: 120ms;
+  --dur-base: 250ms;
+  --dur-sheet: 320ms;
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --ease-out-cubic: cubic-bezier(0.33, 1, 0.68, 1);
+}
