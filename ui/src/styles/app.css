@@ -91,6 +91,8 @@ img { display: block; }
   position: absolute;
   background: var(--paper); border: 3px solid var(--line); border-radius: var(--r-card);
   text-align: left;
+  /* <button> memusatkan konten secara vertikal; kartu harus mulai dari atas */
+  display: flex; flex-direction: column; justify-content: flex-start; align-items: stretch;
   transition: box-shadow var(--dur-base) var(--ease-out-cubic), border-color var(--dur-base) var(--ease-out-cubic);
 }
 .card.selected { border: 6px solid var(--verm); box-shadow: var(--shadow-selected); }
@@ -102,7 +104,7 @@ img { display: block; }
 }
 .card-preview {
   height: 410px; margin: 26px 26px 0; border-radius: var(--r-inner); background: var(--tint);
-  display: flex; align-items: center; justify-content: center; overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
 }
 .card-body { padding: 26px 36px; }
 

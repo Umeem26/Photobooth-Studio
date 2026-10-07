@@ -19,7 +19,7 @@ const SWATCH_CSS: Record<string, string> = {
 
 const CARD_W = 430;
 const CARD_H = 290;
-const CARDS_LEFT = 950;
+const CARDS_LEFT = 1810 - (2 * 430 + 40); // rata kanan dengan margin 110
 const CARDS_TOP = 280;
 const GAP = 40;
 
@@ -45,11 +45,13 @@ export function FilterScreen() {
           URL.revokeObjectURL(url);
           return;
         }
+        window.clearTimeout(skeletonTimer);
         dispatch({ type: 'STRIP_COMPOSED', filterId, url });
         setComposing(false);
         setSkeleton(false);
       } catch (e) {
         if (!cancelled) {
+          window.clearTimeout(skeletonTimer);
           handleError(e, strings.toast.composeFailed);
           setComposing(false);
           setSkeleton(false);
@@ -81,7 +83,7 @@ export function FilterScreen() {
         <Title className="title-screen" lead={strings.filter.titleLead} emphasis={strings.filter.titleEmphasis} />
       </div>
 
-      <div className="abs card-preview" style={{ left: 110, top: 280, width: 780, height: 620, margin: 0 }}
+      <div className="abs card-preview" style={{ left: 110, top: 280, width: 760, height: 620, margin: 0, overflow: 'hidden' }}
         data-testid="filter-strip">
         {skeleton || !state.stripUrl ? (
           <div className="skeleton" style={{ width: 300, height: 540 }} data-testid="skeleton" />
