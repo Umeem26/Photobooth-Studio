@@ -582,55 +582,96 @@ public class PhotoboothGUI extends JFrame {
     }
     
 private void saveStripProcess() {
-        try {
-            // 1. Generate gambar strip
-            BufferedImage finalStrip = service.generateStrip(this.selectedTemplateId);
+        // 1. Generate gambar strip di background (tidak memblokir GUI)
+        setBusy(true);
+        service.generateStripAsync(this.selectedTemplateId, this::logProgress)
+                .whenComplete((finalStrip, err) -> SwingUtilities.invokeLater(() -> {
+                    setBusy(false);
+                    if (err != null) {
+                        showError(err);
+                        return;
+                    }
+                    onStripReady(finalStrip);
+                }));
+    }
 
-            // 2. Preview
-            ImageIcon previewIcon = new ImageIcon(finalStrip.getScaledInstance(
-                    finalStrip.getWidth() / 2, finalStrip.getHeight() / 2, Image.SCALE_SMOOTH));
-            int choice = JOptionPane.showConfirmDialog(
-                    this, new JLabel(previewIcon), "Preview Hasil",
-                    JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
-            if (choice != JOptionPane.OK_OPTION) return;
+    private void onStripReady(BufferedImage finalStrip) {
+        // 2. Preview
+        ImageIcon previewIcon = new ImageIcon(finalStrip.getScaledInstance(
+                finalStrip.getWidth() / 2, finalStrip.getHeight() / 2, Image.SCALE_SMOOTH));
+        int choice = JOptionPane.showConfirmDialog(
+                this, new JLabel(previewIcon), "Preview Hasil",
+                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+        if (choice != JOptionPane.OK_OPTION) return;
 
-            // 3. GENERATE VIDEO STRIP TERLEBIH DAHULU
-            File stripVideoFile = null;
-            try {
-                StripTemplate tpl = service.getAvailableTemplates().get(this.selectedTemplateId);
-                if (tpl != null) {
-                    // Method ini akan membuat video strip di folder lokal
-                    stripVideoFile = StripVideoExporter.exportStripVideo(videoFiles, maxPhotos, tpl);
-                }
-            } catch (Exception ve) {
-                ve.printStackTrace();
-            }
+        // 3. Pilih lokasi simpan (dialog harus di thread GUI)
+        File target = chooseSaveTarget();
+        if (target == null) return;
+        ExportStrategy strategy = new LocalExportStrategy(target);
 
-            // 4. PILIH STRATEGI & EKSEKUSI PENYIMPANAN
-            ExportStrategy strategy = new LocalExportStrategy();
+        // 4. Video strip, arsip sesi, dan export berjalan di background
+        StripTemplate tpl = service.getAvailableTemplates().get(this.selectedTemplateId);
+        File[] videos = videoFiles.clone();
+        int photoCount = maxPhotos;
+        java.util.concurrent.Callable<File> videoTask = tpl == null ? null
+                : () -> StripVideoExporter.exportStripVideo(videos, photoCount, tpl);
 
-            // PASS VIDEO FILE KE SERVICE
-            service.saveFinalImage(strategy, finalStrip, stripVideoFile);
+        setBusy(true);
+        service.exportAsync(this.selectedTemplateId, finalStrip, strategy, videoTask, this::logProgress)
+                .whenComplete((sessionDir, err) -> SwingUtilities.invokeLater(() -> {
+                    setBusy(false);
+                    if (err != null) {
+                        showError(err);
+                        return;
+                    }
+                    // 5. Feedback & Reset
+                    JOptionPane.showMessageDialog(this, "Berhasil disimpan!");
+                    resetSession();
+                }));
+    }
 
-            // 5. Feedback & Reset
-            JOptionPane.showMessageDialog(this, "Berhasil disimpan!");
+    private File chooseSaveTarget() {
+        File defaultDir = config.AppConfig.get().outputDir().toFile();
+        if (!defaultDir.exists()) defaultDir.mkdirs();
 
-            // Reset GUI
-            service.clearCapturedImages();
-            updateGallery();
-            btnSave.setEnabled(false);
-            btnCapture.setEnabled(true);
-            btnCapture.setBackground(PRIMARY_COLOR);
-            currentCaptureSlot = 0;
-            btnCapture.setText("AMBIL FOTO (1/" + maxPhotos + ")");
-            btnPreviewVideo.setEnabled(false);
-            btnRetake.setEnabled(false);
-            java.util.Arrays.fill(videoFiles, null);
+        JFileChooser fileChooser = new JFileChooser(defaultDir);
+        fileChooser.setDialogTitle("Simpan Strip Foto");
+        fileChooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter("PNG Image", "png"));
+        fileChooser.setSelectedFile(new File("photobooth_strip.png"));
 
-        } catch (Exception ex) {
-            JOptionPane.showMessageDialog(this, "Error: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
-            ex.printStackTrace();
-        }
+        if (fileChooser.showSaveDialog(null) != JFileChooser.APPROVE_OPTION) return null;
+        return fileChooser.getSelectedFile();
+    }
+
+    private void resetSession() {
+        service.clearCapturedImages();
+        updateGallery();
+        btnSave.setEnabled(false);
+        btnCapture.setEnabled(true);
+        btnCapture.setBackground(PRIMARY_COLOR);
+        currentCaptureSlot = 0;
+        btnCapture.setText("AMBIL FOTO (1/" + maxPhotos + ")");
+        btnPreviewVideo.setEnabled(false);
+        btnRetake.setEnabled(false);
+        java.util.Arrays.fill(videoFiles, null);
+    }
+
+    // Selama proses background: cegah klik ganda dan ambil ulang
+    private void setBusy(boolean busy) {
+        btnSave.setEnabled(!busy);
+        btnRetake.setEnabled(!busy);
+        setCursor(busy ? Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR) : Cursor.getDefaultCursor());
+    }
+
+    private void logProgress(int percent, String message) {
+        System.out.println("LOG: [" + percent + "%] " + message);
+    }
+
+    private void showError(Throwable err) {
+        Throwable cause = (err instanceof java.util.concurrent.CompletionException && err.getCause() != null)
+                ? err.getCause() : err;
+        JOptionPane.showMessageDialog(this, "Error: " + cause.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        cause.printStackTrace();
     }
 
     private void playSound(String soundFileName) {

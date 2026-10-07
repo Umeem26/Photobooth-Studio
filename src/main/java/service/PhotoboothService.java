@@ -1,68 +1,95 @@
 package service;
 
+import config.AppConfig;
 import hardware.Camera;
 import hardware.CameraManager; // Singleton
-import factory.TemplateFactory; // Factory
+import factory.TemplateFactory; // Simple Factory
 import export.ExportStrategy; // Strategy
 import model.StripTemplate;
+import repository.SessionRecord;
+import repository.SessionRepository;
 import exception.TemplateNotFoundException;
 import exception.ExportFailedException;
 import exception.CameraException;
 
 import java.awt.image.BufferedImage;
+import java.io.File;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
-import java.io.File;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
- * Ini adalah "otak" bisnis dari aplikasi Photobooth.
- * VERSI UPDATE: Memuat 6 template.
+ * Facade "otak" bisnis Photobooth: kamera, template, komposisi strip, arsip sesi, dan export.
+ * Komposisi dan export berjalan di ExecutorService (tidak memblokir thread GUI)
+ * dengan laporan progres lewat {@link ProgressListener}.
  */
 public class PhotoboothService {
 
-    // 1. Referensi ke semua Design Pattern
     private final Camera camera;
-    private TemplateFactory templateFactory;
-    
-    // 2. Daftar gambar yang ditangkap
-    private ArrayList<BufferedImage> capturedImages;
-    
-    // 3. Daftar template yang tersedia (untuk GUI)
-    private Map<String, StripTemplate> availableTemplates;
+    private final TemplateFactory templateFactory;
+    private final SessionRepository sessionRepository;
+    private final ExecutorService executor;
 
-    // Constructor default: memakai webcam asli (Singleton, dibuka lazy)
+    // Daftar gambar yang ditangkap (diubah dari thread GUI)
+    private final ArrayList<BufferedImage> capturedImages;
+
+    // Daftar template yang tersedia (untuk GUI)
+    private final Map<String, StripTemplate> availableTemplates;
+
+    // Constructor default: webcam asli (Singleton, dibuka lazy) dan folder output dari config
     public PhotoboothService() {
         this(CameraManager.getInstance());
     }
 
     // Constructor untuk injeksi kamera (mis. kamera palsu di test)
     public PhotoboothService(Camera camera) {
+        this(camera, new SessionRepository(AppConfig.get().sessionsDir()), newWorkerExecutor());
+    }
+
+    public PhotoboothService(Camera camera, SessionRepository sessionRepository, ExecutorService executor) {
         if (camera == null) throw new IllegalArgumentException("camera tidak boleh null");
+        if (sessionRepository == null) throw new IllegalArgumentException("sessionRepository tidak boleh null");
+        if (executor == null) throw new IllegalArgumentException("executor tidak boleh null");
         this.camera = camera;
+        this.sessionRepository = sessionRepository;
+        this.executor = executor;
         this.templateFactory = new TemplateFactory();
-        
+
         this.capturedImages = new ArrayList<>();
         this.availableTemplates = new HashMap<>();
-        
+
         // Panggil factory untuk memuat template
         initializeTemplates();
     }
 
+    private static ExecutorService newWorkerExecutor() {
+        return Executors.newSingleThreadExecutor(r -> {
+            Thread t = new Thread(r, "vandebooth-worker");
+            t.setDaemon(true);
+            return t;
+        });
+    }
+
     /**
-     * Mengisi daftar template yang tersedia menggunakan Factory.
-     * (Sudah di-update untuk 6 template)
+     * Mengisi daftar template default menggunakan Factory.
      */
     private void initializeTemplates() {
         StripTemplate vertical = templateFactory.createTemplate("TPL-V");
         StripTemplate horizontal = templateFactory.createTemplate("TPL-H");
-        
+
         if (vertical != null) availableTemplates.put(vertical.getTemplateId(), vertical);
         if (horizontal != null) availableTemplates.put(horizontal.getTemplateId(), horizontal);
-        
+
         System.out.println("LOG: 2 Template berhasil dimuat oleh factory.");
     }
-    
+
     // --- METODE UTAMA UNTUK GUI ---
 
     /**
@@ -90,42 +117,105 @@ public class PhotoboothService {
     }
 
     /**
-     * Menggabungkan gambar yang sudah ditangkap menggunakan template yang dipilih.
+     * Menggabungkan gambar yang sudah ditangkap menggunakan template yang dipilih (sinkron).
      */
     public BufferedImage generateStrip(String templateId) throws TemplateNotFoundException {
-        if (!availableTemplates.containsKey(templateId)) {
-            throw new TemplateNotFoundException("Template tidak ditemukan: " + templateId);
-        }
-        
-        StripTemplate template = availableTemplates.get(templateId);
-        return template.applyTemplate(capturedImages);
+        return findTemplate(templateId).applyTemplate(capturedImages);
     }
 
     /**
-     * Menyimpan gambar final menggunakan strategi ekspor yang dipilih.
+     * Versi async dari {@link #generateStrip(String)}. Foto disalin saat dipanggil,
+     * sehingga perubahan list setelahnya tidak memengaruhi hasil.
      */
-    public void saveFinalImage(ExportStrategy strategy, BufferedImage finalImage, File videoFile) throws ExportFailedException {
-        System.out.println("LOG: Service memanggil " + strategy.getStrategyName());
-        
-        // Panggil method export yang baru (dengan 2 parameter)
-        boolean success = strategy.export(finalImage, videoFile);
-        
-        if (!success) {
-            throw new ExportFailedException("Gagal mengekspor data.");
+    public CompletableFuture<BufferedImage> generateStripAsync(String templateId, ProgressListener listener) {
+        ProgressListener progress = ProgressListener.orNone(listener);
+        StripTemplate template;
+        try {
+            template = findTemplate(templateId);
+        } catch (TemplateNotFoundException e) {
+            return CompletableFuture.failedFuture(e);
         }
+        ArrayList<BufferedImage> snapshot = new ArrayList<>(capturedImages);
+        return CompletableFuture.supplyAsync(() -> {
+            progress.onProgress(0, "Menyusun strip");
+            BufferedImage strip = template.applyTemplate(snapshot);
+            progress.onProgress(100, "Strip siap");
+            return strip;
+        }, executor);
     }
-    
+
+    /**
+     * Menjalankan alur simpan di background: buat video strip (opsional), arsipkan sesi
+     * lewat SessionRepository, lalu export dengan strategi yang dipilih.
+     *
+     * @param videoTask pembuat video strip, boleh null; kegagalannya tidak menggagalkan export
+     * @param strategy  strategi export, boleh null (hanya arsip sesi)
+     * @return folder sesi yang tersimpan
+     */
+    public CompletableFuture<Path> exportAsync(String templateId, BufferedImage strip, ExportStrategy strategy,
+                                               Callable<File> videoTask, ProgressListener listener) {
+        ProgressListener progress = ProgressListener.orNone(listener);
+        List<BufferedImage> frames = new ArrayList<>(capturedImages);
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                progress.onProgress(0, "Memulai penyimpanan");
+
+                File video = null;
+                if (videoTask != null) {
+                    progress.onProgress(20, "Membuat video strip");
+                    try {
+                        video = videoTask.call();
+                    } catch (Exception e) {
+                        progress.onProgress(20, "Video strip dilewati: " + e.getMessage());
+                    }
+                }
+
+                progress.onProgress(50, "Menyimpan arsip sesi");
+                Path sessionDir = sessionRepository.save(new SessionRecord(
+                        templateId, frames, strip, video == null ? null : video.toPath()));
+
+                if (strategy != null) {
+                    progress.onProgress(80, "Mengekspor ke " + strategy.getStrategyName());
+                    if (!strategy.export(strip, video)) {
+                        throw new ExportFailedException("Gagal mengekspor ke " + strategy.getStrategyName());
+                    }
+                }
+
+                progress.onProgress(100, "Selesai");
+                return sessionDir;
+            } catch (Exception e) {
+                throw new CompletionException(e);
+            }
+        }, executor);
+    }
+
+    private StripTemplate findTemplate(String templateId) throws TemplateNotFoundException {
+        StripTemplate template = availableTemplates.get(templateId);
+        if (template == null) {
+            throw new TemplateNotFoundException("Template tidak ditemukan: " + templateId);
+        }
+        return template;
+    }
+
+    /** Menghentikan worker background (tugas yang sedang berjalan dibiarkan selesai). */
+    public void shutdown() {
+        executor.shutdown();
+    }
+
     // --- Getter untuk GUI ---
-    
+
     public ArrayList<BufferedImage> getCapturedImages() {
         return capturedImages;
     }
-    
+
     public Map<String, StripTemplate> getAvailableTemplates() {
-        // Ini akan mengembalikan 6 template
         return availableTemplates;
     }
-    
+
+    public SessionRepository getSessionRepository() {
+        return sessionRepository;
+    }
+
     /**
      * Akses webcam untuk live preview GUI. Hanya tersedia bila service memakai CameraManager.
      */

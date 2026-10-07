@@ -1,50 +1,52 @@
 package export;
 
-import config.AppConfig;
 import java.awt.image.BufferedImage;
 import java.io.File;
+import java.io.IOException;
 import javax.imageio.ImageIO;
-import javax.swing.JFileChooser;
-import javax.swing.filechooser.FileNameExtensionFilter;
 
+/**
+ * Strategi export ke file PNG lokal. Pemilihan lokasi file dilakukan oleh pemanggil (GUI),
+ * sehingga strategi ini aman dijalankan di thread background.
+ */
 public class LocalExportStrategy implements ExportStrategy {
+
+    private final File target;
+
+    public LocalExportStrategy(File target) {
+        if (target == null) throw new IllegalArgumentException("target tidak boleh null");
+        this.target = withPngExtension(target);
+    }
+
+    static File withPngExtension(File file) {
+        return file.getName().toLowerCase().endsWith(".png") ? file : new File(file.getPath() + ".png");
+    }
+
+    public File getTarget() {
+        return target;
+    }
 
     @Override
     public String getStrategyName() { return "Komputer"; }
 
-    // Update signature method agar sesuai interface
     @Override
     public boolean export(BufferedImage image, File videoFile) {
         System.out.println("LOG: Menjalankan strategi Ekspor Lokal...");
-
-        File defaultDir = AppConfig.get().outputDir().toFile();
-        if (!defaultDir.exists()) defaultDir.mkdirs();
-
-        JFileChooser fileChooser = new JFileChooser(defaultDir);
-        fileChooser.setDialogTitle("Simpan Strip Foto");
-        fileChooser.setFileFilter(new FileNameExtensionFilter("PNG Image", "png"));
-        fileChooser.setSelectedFile(new File("photobooth_strip.png"));
-
-        int userSelection = fileChooser.showSaveDialog(null);
-
-        if (userSelection == JFileChooser.APPROVE_OPTION) {
-            File fileToSave = fileChooser.getSelectedFile();
-            if (!fileToSave.getAbsolutePath().endsWith(".png")) {
-                fileToSave = new File(fileToSave.getAbsolutePath() + ".png");
-            }
-            try {
-                ImageIO.write(image, "PNG", fileToSave);
-                System.out.println("SUKSES: Gambar disimpan ke: " + fileToSave.getAbsolutePath());
-                
-                // Video sudah otomatis tersimpan di folder Video oleh Exporter
-                // Jadi kita tidak perlu memindahkannya secara manual di sini untuk versi Lokal
-                
-                return true;
-            } catch (Exception e) {
-                System.err.println("ERROR: " + e.getMessage());
+        if (image == null) return false;
+        try {
+            File parent = target.getAbsoluteFile().getParentFile();
+            if (parent != null && !parent.exists() && !parent.mkdirs()) {
                 return false;
             }
+            // Video sudah tersimpan di folder video oleh StripVideoExporter
+            boolean written = ImageIO.write(image, "PNG", target);
+            if (written) {
+                System.out.println("SUKSES: Gambar disimpan ke: " + target.getAbsolutePath());
+            }
+            return written;
+        } catch (IOException e) {
+            System.err.println("ERROR: " + e.getMessage());
+            return false;
         }
-        return false;
     }
 }
