@@ -1,6 +1,7 @@
 package service;
 
 import config.AppConfig;
+import config.ConfigStore;
 import exception.BoothException;
 import exception.BoothException.Kind;
 import export.LocalExportStrategy;
@@ -53,24 +54,26 @@ public class SessionManager {
     }
 
     private final SessionRepository repository;
-    private final AppConfig config;
+    private final ConfigStore configStore;
     private final TemplateFactory templateFactory = new TemplateFactory();
     private final Map<String, Session> sessions = new ConcurrentHashMap<>();
 
-    public SessionManager(SessionRepository repository, AppConfig config) {
-        if (repository == null || config == null) {
+    public SessionManager(SessionRepository repository, ConfigStore configStore) {
+        if (repository == null || configStore == null) {
             throw new IllegalArgumentException("repository dan config wajib diisi");
         }
         this.repository = repository;
-        this.config = config;
+        this.configStore = configStore;
     }
 
+    /** Konfigurasi terkini (bisa berubah lewat Mode Operator tanpa restart). */
     public AppConfig config() {
-        return config;
+        return configStore.current();
     }
 
     /** Caption footer strip: "{event.name} · dd.MM.yyyy". */
     public String caption() {
+        AppConfig config = config();
         String date = config.eventDate().format(CAPTION_DATE);
         String name = config.eventName();
         return name.isEmpty() ? date : name + " · " + date;
@@ -175,7 +178,7 @@ public class SessionManager {
                 throw new BoothException(Kind.CONFLICT, "Strip belum dibuat, panggil compose dulu");
             }
             BufferedImage image = ImageIO.read(strip.toFile());
-            LocalExportStrategy local = new LocalExportStrategy(config.exportsDir().resolve(s.id + ".png").toFile());
+            LocalExportStrategy local = new LocalExportStrategy(config().exportsDir().resolve(s.id + ".png").toFile());
             if (!local.export(image, null)) {
                 throw new IOException("Gagal menyimpan ke " + local.getTarget());
             }

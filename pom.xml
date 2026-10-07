@@ -93,6 +93,10 @@
                 <version>3.5.2</version>
                 <configuration>
                     <argLine>-Djava.awt.headless=true</argLine>
+                    <!-- Tes tidak boleh membaca/menulis folder config pengguna (PIN, config operator) -->
+                    <systemPropertyVariables>
+                        <vandebooth.config.dir>${project.build.directory}/test-config</vandebooth.config.dir>
+                    </systemPropertyVariables>
                 </configuration>
             </plugin>
             <plugin>

@@ -1,6 +1,7 @@
 package service;
 
 import config.AppConfig;
+import config.ConfigStore;
 import hardware.Camera;
 import hardware.CameraManager; // Singleton
 import factory.TemplateFactory; // Simple Factory
@@ -63,6 +64,11 @@ public class PhotoboothService {
 
     public PhotoboothService(Camera camera, SessionRepository sessionRepository, ExecutorService executor,
                              AppConfig config) {
+        this(camera, sessionRepository, executor, ConfigStore.inMemory(config));
+    }
+
+    public PhotoboothService(Camera camera, SessionRepository sessionRepository, ExecutorService executor,
+                             ConfigStore configStore) {
         if (camera == null) throw new IllegalArgumentException("camera tidak boleh null");
         if (sessionRepository == null) throw new IllegalArgumentException("sessionRepository tidak boleh null");
         if (executor == null) throw new IllegalArgumentException("executor tidak boleh null");
@@ -70,7 +76,7 @@ public class PhotoboothService {
         this.sessionRepository = sessionRepository;
         this.executor = executor;
         this.templateFactory = new TemplateFactory();
-        this.sessionManager = new SessionManager(sessionRepository, config);
+        this.sessionManager = new SessionManager(sessionRepository, configStore);
 
         this.capturedImages = new ArrayList<>();
         this.availableTemplates = new HashMap<>();
@@ -83,6 +89,10 @@ public class PhotoboothService {
      * Facade untuk mode sidecar: kamera dikelola UI (getUserMedia), jadi kamera lokal tidak dipakai.
      */
     public static PhotoboothService forSidecar(AppConfig config) {
+        return forSidecar(ConfigStore.inMemory(config));
+    }
+
+    public static PhotoboothService forSidecar(ConfigStore configStore) {
         Camera remote = new Camera() {
             @Override
             public BufferedImage capture() throws CameraException {
@@ -93,7 +103,8 @@ public class PhotoboothService {
             public void close() {
             }
         };
-        return new PhotoboothService(remote, new SessionRepository(config.sessionsDir()), newWorkerExecutor(), config);
+        return new PhotoboothService(remote, new SessionRepository(configStore.current().sessionsDir()), newWorkerExecutor(),
+                configStore);
     }
 
     private static ExecutorService newWorkerExecutor() {
