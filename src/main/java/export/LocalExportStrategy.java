@@ -1,5 +1,6 @@
 package export;
 
+import config.AppConfig;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import javax.imageio.ImageIO;
@@ -16,8 +17,7 @@ public class LocalExportStrategy implements ExportStrategy {
     public boolean export(BufferedImage image, File videoFile) {
         System.out.println("LOG: Menjalankan strategi Ekspor Lokal...");
 
-        String defaultPath = "../HasilPhotobooth";
-        File defaultDir = new File(defaultPath);
+        File defaultDir = AppConfig.get().outputDir().toFile();
         if (!defaultDir.exists()) defaultDir.mkdirs();
 
         JFileChooser fileChooser = new JFileChooser(defaultDir);

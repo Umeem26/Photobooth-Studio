@@ -1,5 +1,6 @@
 package utils;
 
+import config.AppConfig;
 import org.jcodec.api.FrameGrab;
 import org.jcodec.api.awt.AWTSequenceEncoder;
 import org.jcodec.common.io.NIOUtils;
@@ -35,7 +36,7 @@ public class StripVideoExporter {
             }
         }
 
-        File folder = new File("../HasilPhotobooth/Video");
+        File folder = AppConfig.get().videoDir().toFile();
         if (!folder.exists()) folder.mkdirs();
 
         String timestamp = LocalDateTime.now()

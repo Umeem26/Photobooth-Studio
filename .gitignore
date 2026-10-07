@@ -16,7 +16,7 @@ bin/
 # Kredensial dan file lokal (jangan pernah di-commit)
 credentials*.json
 tokens/
-config.local.properties
+/config.properties
 
 # File sistem
 desktop.ini

@@ -1,5 +1,6 @@
 package utils;
 
+import config.AppConfig;
 import org.jcodec.api.awt.AWTSequenceEncoder;
 
 import java.awt.image.BufferedImage;
@@ -18,7 +19,7 @@ public class VideoRecorder {
 
     public void startRecording() {
         try {
-            File folder = new File("../HasilPhotobooth/Video");
+            File folder = AppConfig.get().videoDir().toFile();
             if (!folder.exists()) {
                 folder.mkdirs();
             }
