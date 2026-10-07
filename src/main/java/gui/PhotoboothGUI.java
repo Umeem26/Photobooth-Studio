@@ -375,9 +375,9 @@ public class PhotoboothGUI extends JFrame {
 
     private ImageIcon loadIcon(String path, int size) {
         try {
-            File imgFile = new File(path);
-            if (imgFile.exists()) {
-                ImageIcon originalIcon = new ImageIcon(path);
+            java.net.URL url = PhotoboothGUI.class.getResource("/assets/" + path);
+            if (url != null) {
+                ImageIcon originalIcon = new ImageIcon(url);
                 Image img = originalIcon.getImage();
                 Image newImg = img.getScaledInstance(size, size, Image.SCALE_SMOOTH);
                 return new ImageIcon(newImg);

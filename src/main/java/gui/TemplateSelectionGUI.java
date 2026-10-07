@@ -257,7 +257,8 @@ public class TemplateSelectionGUI extends JFrame {
         JLabel title = new JLabel("SIXSEVEN PHOTOBOOTH STUDIO");
         title.setFont(TITLE_FONT);
         title.setForeground(Color.WHITE);
-        title.setIcon(new ImageIcon("camera.png"));
+        java.net.URL iconUrl = TemplateSelectionGUI.class.getResource("/assets/camera.png");
+        if (iconUrl != null) title.setIcon(new ImageIcon(iconUrl));
         title.setIconTextGap(15);
 
         header.add(title);

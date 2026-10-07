@@ -1,22 +1,24 @@
-# Abaikan file kompilasi
+# File kompilasi
 *.class
 
-# Abaikan folder setting IDE (agar tidak bentrok settingan VSCode teman)
+# Maven
+target/
+
+# Setting IDE lokal
 .vscode/
+.idea/
+*.iml
 .settings/
 .classpath
 .project
 bin/
 
-src/credentials.json
+# Kredensial dan file lokal (jangan pernah di-commit)
+credentials*.json
 tokens/
+config.local.properties
 
+# File sistem
 desktop.ini
-screenshots/desktop.ini
-
-# Abaikan file hasil output
-*.png
-*.jpg
-
-# Maven
-target/
+Thumbs.db
+.DS_Store
