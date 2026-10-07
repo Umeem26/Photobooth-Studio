@@ -8,6 +8,9 @@ import export.LocalExportStrategy;
 import factory.TemplateFactory;
 import filter.FilterStrategy;
 import model.StripTemplate;
+import payment.DemoPaymentProvider;
+import payment.PaymentProvider;
+import payment.PaymentStatus;
 import repository.SessionRepository;
 import template.BrandedStripTemplate;
 import template.StripLayout;
@@ -45,6 +48,10 @@ public class SessionManager {
         final byte[][] frames;
         int stripVersion;
         Status status = Status.ACTIVE;
+        /** Snapshot payment.enabled saat sesi dibuat. */
+        boolean paymentRequired;
+        /** Lunas dari sesi sebelumnya ("Start over" sebelum strip jadi). */
+        boolean paidCarried;
 
         Session(String id, StripLayout layout) {
             this.id = id;
@@ -57,13 +64,23 @@ public class SessionManager {
     private final ConfigStore configStore;
     private final TemplateFactory templateFactory = new TemplateFactory();
     private final Map<String, Session> sessions = new ConcurrentHashMap<>();
+    private final PaymentProvider payments;
 
     public SessionManager(SessionRepository repository, ConfigStore configStore) {
-        if (repository == null || configStore == null) {
-            throw new IllegalArgumentException("repository dan config wajib diisi");
+        this(repository, configStore, new DemoPaymentProvider());
+    }
+
+    public SessionManager(SessionRepository repository, ConfigStore configStore, PaymentProvider payments) {
+        if (repository == null || configStore == null || payments == null) {
+            throw new IllegalArgumentException("repository, config, dan payment wajib diisi");
         }
         this.repository = repository;
         this.configStore = configStore;
+        this.payments = payments;
+    }
+
+    public SessionRepository repository() {
+        return repository;
     }
 
     /** Konfigurasi terkini (bisa berubah lewat Mode Operator tanpa restart). */
@@ -80,20 +97,93 @@ public class SessionManager {
     }
 
     public String createSession(String layoutId) throws BoothException, IOException {
+        return createSession(layoutId, null);
+    }
+
+    /**
+     * @param continueFrom sesi sebelumnya ("Start over"); status lunasnya dibawa bila strip
+     *                     sesi itu belum jadi, agar tamu tidak membayar dua kali.
+     */
+    public String createSession(String layoutId, String continueFrom) throws BoothException, IOException {
         StripLayout layout = StripLayout.byId(layoutId)
                 .orElseThrow(() -> new BoothException(Kind.BAD_REQUEST, "Layout tidak dikenal: " + layoutId));
+        boolean required = config().paymentEnabled();
+        boolean carried = false;
+        if (required && continueFrom != null) {
+            Session prev = SessionRepository.isValidSessionId(continueFrom) ? sessions.get(continueFrom) : null;
+            carried = prev != null && prev.status == Status.ACTIVE && isPaid(prev);
+        }
         String id = repository.createSession(Map.of(
                 "layout", layout.id(),
                 "photos", String.valueOf(layout.photos()),
-                "status", status(Status.ACTIVE)));
-        sessions.put(id, new Session(id, layout));
+                "status", status(Status.ACTIVE),
+                "payment", required ? (carried ? "paid" : "required") : "off"));
+        Session s = new Session(id, layout);
+        s.paymentRequired = required;
+        s.paidCarried = carried;
+        sessions.put(id, s);
         return id;
+    }
+
+    // ------------------------------------------------------------------ pembayaran demo
+
+    /** Hasil awal pembayaran untuk layar Pay. */
+    public record PaymentStart(PaymentStatus status, int amount, String qrPayload) { }
+
+    public PaymentStart startPayment(String sessionId) throws BoothException, IOException {
+        Session s = require(sessionId);
+        synchronized (s) {
+            if (!s.paymentRequired) {
+                throw new BoothException(Kind.CONFLICT, "Pembayaran tidak aktif untuk sesi ini");
+            }
+            int amount = config().paymentPrice();
+            PaymentStatus status = isPaid(s) ? PaymentStatus.PAID : payments.start(s.id, amount);
+            repository.updateMeta(s.id, Map.of("payment", status.id(), "payment.amount", String.valueOf(amount)));
+            return new PaymentStart(status, amount, payments.qrPayload(s.id));
+        }
+    }
+
+    public PaymentStatus simulatePayment(String sessionId) throws BoothException, IOException {
+        Session s = require(sessionId);
+        synchronized (s) {
+            if (!s.paymentRequired) {
+                throw new BoothException(Kind.CONFLICT, "Pembayaran tidak aktif untuk sesi ini");
+            }
+            if (!payments.supportsSimulation()) {
+                throw new BoothException(Kind.CONFLICT, "Simulasi pembayaran tidak tersedia");
+            }
+            if (payments.status(s.id) == PaymentStatus.NONE) {
+                payments.start(s.id, config().paymentPrice());
+            }
+            PaymentStatus status = payments.simulatePaid(s.id);
+            repository.updateMeta(s.id, Map.of("payment", status.id()));
+            return status;
+        }
+    }
+
+    /** Status pembayaran; PAID juga untuk sesi yang tidak memerlukan pembayaran. */
+    public PaymentStatus paymentStatus(String sessionId) throws BoothException {
+        Session s = require(sessionId);
+        synchronized (s) {
+            return s.paymentRequired ? (s.paidCarried ? PaymentStatus.PAID : payments.status(s.id)) : PaymentStatus.PAID;
+        }
+    }
+
+    public boolean paymentRequired(String sessionId) throws BoothException {
+        return require(sessionId).paymentRequired;
+    }
+
+    private boolean isPaid(Session s) {
+        return !s.paymentRequired || s.paidCarried || payments.status(s.id) == PaymentStatus.PAID;
     }
 
     public void putFrame(String sessionId, int index, byte[] jpeg) throws BoothException, IOException {
         Session s = require(sessionId);
         synchronized (s) {
             checkIndex(s, index);
+            if (!isPaid(s)) {
+                throw new BoothException(Kind.PAYMENT_REQUIRED, "Sesi belum dibayar");
+            }
             if (jpeg == null || jpeg.length < 4) {
                 throw new BoothException(Kind.BAD_REQUEST, "Body JPEG kosong");
             }
@@ -196,6 +286,11 @@ public class SessionManager {
             repository.updateMeta(s.id, Map.of("status", status(s.status)));
             sessions.remove(s.id);
         }
+    }
+
+    /** Melupakan sesi di memori (mis. foldernya dihapus dari galeri). */
+    public void discard(String sessionId) {
+        if (sessionId != null) sessions.remove(sessionId);
     }
 
     private Session require(String sessionId) throws BoothException {

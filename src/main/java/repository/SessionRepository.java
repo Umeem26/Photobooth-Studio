@@ -11,11 +11,16 @@ import java.nio.file.StandardCopyOption;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 import javax.imageio.ImageIO;
 
 /**
@@ -166,6 +171,92 @@ public class SessionRepository {
         try (OutputStream out = Files.newOutputStream(target)) {
             meta.store(out, "Van de Booth session");
         }
+    }
+
+    // --- Galeri (Mode Operator) ---
+
+    /** Ringkasan satu sesi tersimpan. */
+    public record SessionInfo(String id, String status, String layout, String filter, LocalDateTime createdAt,
+                              int frames, boolean hasStrip) { }
+
+    /** Semua sesi di disk, terbaru dulu. Folder yang bukan sesi diabaikan. */
+    public List<SessionInfo> list() throws IOException {
+        if (!Files.isDirectory(sessionsDir)) return List.of();
+        List<SessionInfo> out = new ArrayList<>();
+        try (Stream<Path> dirs = Files.list(sessionsDir)) {
+            for (Path dir : (Iterable<Path>) dirs::iterator) {
+                String id = dir.getFileName().toString();
+                if (!isValidSessionId(id) || !Files.isDirectory(dir)) continue;
+                Properties meta = new Properties();
+                Path metaFile = dir.resolve("meta.properties");
+                if (Files.isRegularFile(metaFile)) {
+                    try (InputStream in = Files.newInputStream(metaFile)) {
+                        meta.load(in);
+                    }
+                }
+                int frames;
+                try (Stream<Path> files = Files.list(dir)) {
+                    frames = (int) files.filter(f -> f.getFileName().toString().matches("frame_\\d+\\.(jpg|png)")).count();
+                }
+                out.add(new SessionInfo(id, meta.getProperty("status", "unknown"), meta.getProperty("layout", ""),
+                        meta.getProperty("filter", ""), createdAt(id, meta), frames,
+                        Files.isRegularFile(dir.resolve("strip.png"))));
+            }
+        }
+        out.sort(Comparator.comparing(SessionInfo::id).reversed());
+        return out;
+    }
+
+    private static LocalDateTime createdAt(String id, Properties meta) {
+        try {
+            return LocalDateTime.parse(meta.getProperty("createdAt", ""));
+        } catch (DateTimeParseException e) {
+            return LocalDateTime.parse(id.substring(0, 19), FOLDER_FORMAT);
+        }
+    }
+
+    /** Menghapus satu sesi beserta isinya. false bila tidak ada. */
+    public boolean delete(String id) throws IOException {
+        if (!exists(id)) return false;
+        Path dir = sessionDir(id);
+        try (Stream<Path> walk = Files.walk(dir)) {
+            for (Path p : (Iterable<Path>) walk.sorted(Comparator.reverseOrder())::iterator) {
+                Files.deleteIfExists(p);
+            }
+        }
+        return true;
+    }
+
+    /** Menghapus sesi yang dibuat lebih dari {@code days} hari sebelum sekarang. */
+    public List<String> purgeOlderThan(int days) throws IOException {
+        if (days < 0) throw new IllegalArgumentException("days tidak boleh negatif");
+        LocalDateTime cutoff = LocalDateTime.now(clock).minusDays(days);
+        List<String> deleted = new ArrayList<>();
+        for (SessionInfo info : list()) {
+            if (info.createdAt().isBefore(cutoff) && delete(info.id())) deleted.add(info.id());
+        }
+        return deleted;
+    }
+
+    /** Mengemas semua sesi ke satu ZIP ({@code sessions/<id>/...}). */
+    public Path exportAll(Path zipFile) throws IOException {
+        Files.createDirectories(zipFile.toAbsolutePath().getParent());
+        Path tmp = zipFile.resolveSibling(zipFile.getFileName() + ".tmp");
+        try (ZipOutputStream zip = new ZipOutputStream(Files.newOutputStream(tmp))) {
+            for (SessionInfo info : list()) {
+                Path dir = sessionDir(info.id());
+                try (Stream<Path> files = Files.list(dir)) {
+                    for (Path f : (Iterable<Path>) files.sorted()::iterator) {
+                        if (!Files.isRegularFile(f)) continue;
+                        zip.putNextEntry(new ZipEntry("sessions/" + info.id() + "/" + f.getFileName()));
+                        Files.copy(f, zip);
+                        zip.closeEntry();
+                    }
+                }
+            }
+        }
+        Files.move(tmp, zipFile, StandardCopyOption.REPLACE_EXISTING);
+        return zipFile;
     }
 
     private static void deleteQuietly(Path dir) {

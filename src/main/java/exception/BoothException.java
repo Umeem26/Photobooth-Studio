@@ -7,6 +7,7 @@ public class BoothException extends Exception {
 
     public enum Kind {
         BAD_REQUEST(400, "bad_request"),
+        PAYMENT_REQUIRED(402, "payment_required"),
         NOT_FOUND(404, "not_found"),
         CONFLICT(409, "conflict");
 

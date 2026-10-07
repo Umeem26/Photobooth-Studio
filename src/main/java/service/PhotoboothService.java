@@ -14,9 +14,14 @@ import exception.ExportFailedException;
 import exception.CameraException;
 import exception.BoothException;
 import template.StripLayout;
+import payment.PaymentStatus;
+import print.PrintManager;
+import print.PrinterResolver;
+import share.ShareService;
 
 import java.awt.image.BufferedImage;
 import java.io.File;
+import java.time.Clock;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -41,6 +46,11 @@ public class PhotoboothService {
     private final SessionRepository sessionRepository;
     private final ExecutorService executor;
     private final SessionManager sessionManager;
+    private final ConfigStore configStore;
+
+    // Hanya mode sidecar (Fase 3): berbagi lewat jaringan lokal dan cetak
+    private ShareService shareService;
+    private PrintManager printManager;
 
     // Daftar gambar yang ditangkap (diubah dari thread GUI)
     private final ArrayList<BufferedImage> capturedImages;
@@ -77,6 +87,7 @@ public class PhotoboothService {
         this.executor = executor;
         this.templateFactory = new TemplateFactory();
         this.sessionManager = new SessionManager(sessionRepository, configStore);
+        this.configStore = configStore;
 
         this.capturedImages = new ArrayList<>();
         this.availableTemplates = new HashMap<>();
@@ -93,6 +104,24 @@ public class PhotoboothService {
     }
 
     public static PhotoboothService forSidecar(ConfigStore configStore) {
+        return forSidecar(configStore, PrinterResolver.system());
+    }
+
+    /** Sidecar lengkap: ShareServer dinyalakan sesuai config, antrean cetak dengan resolver printer. */
+    public static PhotoboothService forSidecar(ConfigStore configStore, PrinterResolver printers) {
+        PhotoboothService service = forSidecarCore(configStore);
+        service.shareService = new ShareService(configStore, configStore.current().sessionsDir(),
+                Clock.systemDefaultZone());
+        service.shareService.reconcile();
+        service.printManager = new PrintManager(configStore, printers, Executors.newSingleThreadExecutor(r -> {
+            Thread t = new Thread(r, "vandebooth-print");
+            t.setDaemon(true);
+            return t;
+        }));
+        return service;
+    }
+
+    private static PhotoboothService forSidecarCore(ConfigStore configStore) {
         Camera remote = new Camera() {
             @Override
             public BufferedImage capture() throws CameraException {
@@ -238,6 +267,8 @@ public class PhotoboothService {
     /** Menghentikan worker background (tugas yang sedang berjalan dibiarkan selesai). */
     public void shutdown() {
         executor.shutdown();
+        if (shareService != null) shareService.close();
+        if (printManager != null) printManager.close();
     }
 
     // --- Sesi booth yang dikendalikan UI (sidecar Fase 2) ---
@@ -256,6 +287,81 @@ public class PhotoboothService {
 
     public String createSession(String layoutId) throws BoothException, IOException {
         return sessionManager.createSession(layoutId);
+    }
+
+    public String createSession(String layoutId, String continueFrom) throws BoothException, IOException {
+        return sessionManager.createSession(layoutId, continueFrom);
+    }
+
+    public ConfigStore getConfigStore() {
+        return configStore;
+    }
+
+    public SessionManager getSessionManager() {
+        return sessionManager;
+    }
+
+    // --- Pembayaran demo ---
+
+    public SessionManager.PaymentStart startPayment(String sessionId) throws BoothException, IOException {
+        return sessionManager.startPayment(sessionId);
+    }
+
+    public PaymentStatus simulatePayment(String sessionId) throws BoothException, IOException {
+        return sessionManager.simulatePayment(sessionId);
+    }
+
+    public PaymentStatus paymentStatus(String sessionId) throws BoothException {
+        return sessionManager.paymentStatus(sessionId);
+    }
+
+    public boolean paymentRequired(String sessionId) throws BoothException {
+        return sessionManager.paymentRequired(sessionId);
+    }
+
+    // --- Berbagi lewat jaringan lokal ---
+
+    public ShareService getShareService() {
+        if (shareService == null) throw new IllegalStateException("Berbagi hanya tersedia di mode sidecar");
+        return shareService;
+    }
+
+    /** Link + QR unduh untuk strip sesi (strip harus sudah dikomposisi). */
+    public ShareService.ShareLink share(String sessionId) throws BoothException {
+        try {
+            sessionManager.stripPath(sessionId);
+        } catch (BoothException e) {
+            if (e.kind() == BoothException.Kind.NOT_FOUND && e.getMessage().startsWith("Strip")) {
+                throw new BoothException(BoothException.Kind.CONFLICT, "Strip belum dibuat, panggil compose dulu");
+            }
+            throw e;
+        }
+        return getShareService().linkForSession(sessionId);
+    }
+
+    // --- Cetak ---
+
+    public PrintManager getPrintManager() {
+        if (printManager == null) throw new IllegalStateException("Cetak hanya tersedia di mode sidecar");
+        return printManager;
+    }
+
+    public PrintManager.JobStatus print(String sessionId, int copies) throws BoothException {
+        Path strip;
+        try {
+            strip = sessionManager.stripPath(sessionId);
+        } catch (BoothException e) {
+            if (e.kind() == BoothException.Kind.NOT_FOUND && e.getMessage().startsWith("Strip")) {
+                throw new BoothException(BoothException.Kind.CONFLICT, "Strip belum dibuat, panggil compose dulu");
+            }
+            throw e;
+        }
+        return getPrintManager().submit(sessionId, strip, copies);
+    }
+
+    public PrintManager.JobStatus printStatus(String sessionId) throws BoothException {
+        sessionManager.paymentRequired(sessionId); // 404 bila sesi tidak ada
+        return getPrintManager().status(sessionId);
     }
 
     public void putFrame(String sessionId, int index, byte[] jpeg) throws BoothException, IOException {
