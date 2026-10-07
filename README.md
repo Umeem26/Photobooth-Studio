@@ -1,109 +1,66 @@
-<div align="center">
-  <img src="https://img.shields.io/badge/Java-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white" />
-  <img src="https://img.shields.io/badge/Architecture-Clean%20Code-blue?style=for-the-badge" />
-  <img src="https://img.shields.io/badge/Pattern-5%20Design%20Patterns-7b2cbf?style=for-the-badge" />
-  
-  <br />
-  <h1>📸 SixSeven Photobooth Studio Pro</h1>
-  <p><i>Modern Desktop Photobooth with Cloud Integration & Aesthetic Templates.</i></p>
-</div>
+# Van de Booth
 
-## ✨ Fitur Utama
+Aplikasi photobooth desktop berbasis Java Swing: ambil beberapa foto dari webcam, gabungkan menjadi strip, lalu simpan ke komputer.
 
-Aplikasi ini bukan sekadar mengambil foto, tetapi memberikan pengalaman *photobooth* digital yang lengkap:
+Proyek ini berawal dari Tugas Besar mata kuliah Pemrograman Berorientasi Objek (PBO) semester 3 oleh kelompok SixSeven (repo asli bernama "Photobooth Studio Pro"), lalu dilanjutkan sebagai fondasi produk Van de Booth.
 
-* **📸 Live Webcam Feed:** Pratinjau kamera real-time dengan hitungan mundur visual di layar.
-* **🎨 Pilihan Jenis Template:** Mulai dari Strip Vertikal, Kotak 2x2, hingga layout Klasik.
-* **🖼️ Filter Efek:** Pilihan filter *Normal* dan *Grayscale* (Hitam Putih) secara real-time.
-* **☁️ Integrasi Google Drive:** Upload otomatis ke Cloud penyimpanan.
-* **📱 QR Code Generator:** Pengguna cukup scan QR Code yang muncul untuk mengunduh foto langsung ke HP mereka.
-* **💾 Simpan Lokal:** Opsi untuk menyimpan hasil foto ke komputer lokal.
-* **🔊 Audio Feedback:** Efek suara shutter kamera saat pengambilan gambar.
-* **🌑 Modern Dark UI:** Antarmuka elegan menggunakan FlatLaf Dark Theme.
+## Fitur
 
----
+- Pilih layout: Strip Vertikal atau Strip Horizontal, masing-masing 2, 3, atau 4 foto, dengan pratinjau layout.
+- Live preview webcam dengan hitung mundur 3 detik di layar, pilihan kamera, dan ambil ulang foto terakhir.
+- Filter Normal, Grayscale, dan Vintage, diterapkan pada preview dan hasil foto.
+- Rekaman video selama hitung mundur, digabung menjadi video strip MP4 sesuai layout, dengan pratinjau.
+- Simpan strip PNG ke lokasi pilihan pengguna.
+- Arsip sesi otomatis di `~/VanDeBooth/sessions/<timestamp>/` (foto per slot, `strip.png`, `meta.properties`).
+- Penyusunan strip dan penyimpanan berjalan di background thread, GUI tidak membeku.
+- Tema gelap FlatLaf.
 
-## 🖼️ Tampilan Aplikasi
+Util pembuat QR Code (`utils.QrCodeGenerator`) tersedia dan teruji, tetapi belum terhubung ke GUI.
 
-| Halaman Pemilihan Template | Live Kamera & Filter |
-|:--------------------------:|:--------------------:|
-| ![Template Selection](screenshots/template_screen.png) | ![Camera UI](screenshots/camera_screen.png) |
-| *Memilih jenis layout strip* | *Proses foto dengan countdown overlay* |
+![Pemilihan template](screenshots/template_screen.png)
+![Kamera dan filter](screenshots/camera_screen.png)
 
-| Hasil QR Code |
-|:-------------:|
-| ![QR Code](screenshots/qr_result.png) |
-| *Scan untuk download via Drive* |
+## Menjalankan
 
+Prasyarat: JDK 17 atau lebih baru dan webcam. Maven tidak perlu dipasang (sudah ada wrapper).
 
----
+```bash
+git clone https://github.com/Umeem26/Photobooth-Studio.git
+cd Photobooth-Studio
+./mvnw verify                 # Windows: mvnw.cmd verify
+java -jar target/vandebooth.jar
+```
 
-## 🏗️ Arsitektur & Design Patterns
+`verify` menjalankan seluruh unit test (headless, tanpa webcam) dan membuat fat JAR `target/vandebooth.jar`.
 
-Proyek ini dibangun untuk memenuhi standar Tugas Besar Pemrograman Berorientasi Objek (PBO) dengan menerapkan **5 Design Patterns** utama:
+### Konfigurasi
 
-### 1. Creational Patterns
-* **Singleton (`CameraManager`):** Memastikan hanya ada satu instansi yang mengontrol akses ke hardware webcam untuk mencegah *crash*.
-* **Factory Method (`TemplateFactory`):** Membuat objek template (`TemplateVertical`, `TemplateSquare`, dll) secara dinamis tanpa mengekspos logika pembuatan ke klien.
+Folder output default `~/VanDeBooth` (video di `videos/`, arsip sesi di `sessions/`). Ubah dengan salah satu cara:
 
-### 2. Structural Patterns
-* **Facade (`PhotoboothService`):** Menyederhanakan kompleksitas sistem (Kamera, Factory, Export) menjadi satu antarmuka yang mudah digunakan oleh GUI.
+- file `config.properties` di direktori kerja berisi `output.dir=D:/Booth`
+- `java -Dvandebooth.output.dir=D:/Booth -jar target/vandebooth.jar`
 
-### 3. Behavioral Patterns
-* **Strategy (`ExportStrategy`):** Memungkinkan pengguna menukar algoritma penyimpanan (Simpan Lokal vs Upload Drive) saat runtime.
-* **Strategy (`FilterStrategy`):** Memungkinkan penerapan algoritma manipulasi piksel (Filter warna) yang berbeda secara dinamis.
+## Arsitektur
 
----
+Paket di `src/main/java`: `gui` (Swing), `service` (Facade), `hardware` (kamera), `factory`, `template`, `filter`, `export`, `repository`, `config`, `utils`, `exception`.
 
-## 🛠️ Teknologi & Library
+Design pattern yang dipakai: 3 pola GoF ditambah Simple Factory.
 
-* **Bahasa:** Java (JDK 17+)
-* **GUI Framework:** Java Swing
-* **Look & Feel:** [FlatLaf](https://www.formdev.com/flatlaf/) (Dark Mode)
-* **Hardware Access:** [Webcam Capture API](https://github.com/sarxos/webcam-capture)
-* **Cloud API:** Google Drive API v3 & Google OAuth Client
-* **QR Code:** ZXing (Zebra Crossing)
-* **Audio:** Java Sound API
+| Pola | Kelas |
+|---|---|
+| Singleton (thread-safe, lazy) | `hardware.CameraManager` |
+| Strategy | `export.ExportStrategy`, `filter.FilterStrategy` |
+| Facade | `service.PhotoboothService` |
+| Simple Factory (bukan GoF) | `factory.TemplateFactory` |
 
----
+## Tim pengembang awal
 
-## 🚀 Cara Menjalankan (Installation)
+| Nama | Kontribusi utama |
+|---|---|
+| Umem (Hisyam Khaeru Umam) | Integrasi dan merge antar-branch, GUI, wiring `MainApp` |
+| Ibnu (Ibun) | `CameraManager`, `PhotoboothService` awal, fitur video |
+| Ihsan Ramadhan (Ican) | Template, `TemplateFactory`, filter, unit test |
 
-### Prasyarat
-1.  Java Development Kit (JDK) versi 8 atau lebih baru.
-2.  Koneksi Internet (untuk fitur Google Drive).
-3.  Webcam yang terhubung.
+## Lisensi
 
-### Langkah-Langkah
-1.  **Clone Repository:**
-    ```bash
-    git clone [https://github.com/username-anda/TubesPBO-Photobooth.git](https://github.com/username-anda/TubesPBO-Photobooth.git)
-    ```
-2.  **Setup Google Credentials:**
-    * Dapatkan file `credentials.json` dari Google Cloud Console (OAuth 2.0 Client ID).
-    * Letakkan file `credentials.json` di dalam folder `src/`.
-    * *(Catatan: File ini di-ignore oleh git demi keamanan).*
-3.  **Run Aplikasi:**
-    * Buka project di VS Code / IntelliJ IDEA.
-    * Jalankan file `src/MainApp.java`.
-
----
-
-## 👥 Tim Pengembang
-
-Proyek ini dikerjakan oleh Kelompok [Nama Kelompok] untuk memenuhi Tugas Besar PBO:
-
-| Nama | Peran | Kontribusi Utama |
-| :--- | :--- | :--- |
-| **Umem** | **Project Lead & Integrator** | Frontend GUI, Google Drive API, QR Code, System Integration. |
-| **Ibun** | **Backend & Hardware** | Camera Singleton, Photobooth Service, Core Logic. |
-| **Ican** | **Logic & Visuals** | Template Factory, Filter Strategies, Image Processing. |
-
----
-
-## 📜 Lisensi
-
-Didistribusikan di bawah lisensi MIT. Lihat `LICENSE` untuk informasi lebih lanjut.
-
----
-*Dibuat dengan ❤️ dan ☕ oleh Tim SixSeven Photobooth Studio Pro.*
+MIT, lihat `LICENSE`. Status lisensi aset non-kode dicatat di `ASSETS.md`.
