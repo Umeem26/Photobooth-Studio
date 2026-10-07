@@ -1,0 +1,183 @@
+/* Gaya dasar dan komponen. Semua warna, bayangan, radius, dan durasi dari tokens.css. */
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body, #root { width: 100%; height: 100%; }
+body {
+  background: var(--cream);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+  user-select: none;
+}
+button { font: inherit; color: inherit; background: none; border: none; cursor: pointer; }
+img { display: block; }
+
+/* ---------- Stage: kanvas 1920x1080 yang di-scale, letterbox cream ---------- */
+.stage-viewport { position: fixed; inset: 0; background: var(--cream); overflow: hidden; }
+.stage {
+  position: absolute; left: 50%; top: 50%;
+  width: 1920px; height: 1080px;
+  background: var(--cream);
+  overflow: hidden;
+  transform-origin: center center;
+}
+
+.screen { position: absolute; inset: 0; animation: screen-in var(--dur-base) var(--ease-out-cubic) both; }
+@keyframes screen-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+
+.abs { position: absolute; }
+
+/* ---------- Tipografi ---------- */
+.title { font-family: var(--font-serif); font-weight: 560; letter-spacing: -0.03em; line-height: 1; }
+.title em { font-style: italic; font-weight: 400; }
+.title-hero { font-size: 150px; line-height: 0.98; letter-spacing: -0.035em; }
+.title-screen { font-size: 96px; }
+.title-result { font-size: 112px; line-height: 0.98; }
+.wm { font-family: var(--font-serif); font-weight: 600; letter-spacing: -0.02em; white-space: nowrap; line-height: 1.2; }
+.wm i { font-weight: 400; font-style: italic; }
+.wm b { color: var(--verm); font-weight: 600; }
+.body-text { font-size: 36px; line-height: 1.45; color: var(--ink-2); font-weight: 500; }
+.card-title { font-family: var(--font-serif); font-size: 46px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.15; }
+.card-desc { font-size: 26px; color: var(--ink-2); margin-top: 6px; font-weight: 500; }
+.note { font-size: 24px; color: var(--ink-2); font-weight: 600; }
+
+/* ---------- Button ---------- */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 20px;
+  height: 112px; padding: 0 56px; border-radius: var(--r-pill);
+  font-weight: 700; font-size: 38px; letter-spacing: -0.01em; white-space: nowrap;
+  transition: transform var(--dur-fast) var(--ease-out), opacity var(--dur-fast) var(--ease-out);
+}
+.btn:active:not(:disabled) { transform: scale(0.97); }
+.btn:disabled { opacity: 0.45; cursor: default; }
+.btn:focus-visible { outline: 4px solid var(--ink); outline-offset: 6px; }
+.btn-primary { background: var(--verm); color: var(--paper); }
+.btn-outline { border: 4px solid var(--ink); color: var(--ink); }
+.btn-ghost { color: var(--ink-2); font-weight: 600; height: 96px; padding: 0 12px; font-size: 32px; }
+.btn-hero { height: 136px; padding: 0 72px; font-size: 46px; }
+.btn-on-camera { background: var(--paper-96); padding: 0 36px; font-size: 28px; color: var(--ink); }
+
+/* ---------- Chip ---------- */
+.chip {
+  display: inline-flex; align-items: center; gap: 12px;
+  height: 56px; padding: 0 26px; border-radius: var(--r-pill);
+  background: var(--paper); border: 2px solid var(--line);
+  font-weight: 600; font-size: 24px; white-space: nowrap;
+}
+.chip-lg { height: 80px; padding: 0 40px; gap: 26px; font-size: 32px; }
+.chip-xl { height: 84px; padding: 0 44px; font-size: 34px; }
+.chip-on-camera { background: var(--paper-96); }
+.chip-live-dot { width: 16px; height: 16px; border-radius: 50%; background: var(--verm); display: inline-block; }
+.dots { display: flex; gap: 12px; }
+.dot { width: 22px; height: 22px; border-radius: 50%; border: 3px solid var(--ink); background: transparent; }
+.dot.done { background: var(--ink); }
+.dot.current { background: var(--verm); border-color: var(--verm); }
+
+/* ---------- StepPill ---------- */
+.steps { display: flex; gap: 14px; }
+.step {
+  display: inline-flex; align-items: center; gap: 14px;
+  height: 64px; padding: 0 30px; border-radius: var(--r-pill);
+  font-weight: 700; font-size: 26px;
+  border: 2px solid var(--line); color: var(--ink-2);
+}
+.step.active { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+.step-num { opacity: 0.7; }
+
+/* ---------- Card ---------- */
+.card {
+  position: absolute;
+  background: var(--paper); border: 3px solid var(--line); border-radius: var(--r-card);
+  text-align: left;
+  transition: box-shadow var(--dur-base) var(--ease-out-cubic), border-color var(--dur-base) var(--ease-out-cubic);
+}
+.card.selected { border: 6px solid var(--verm); box-shadow: var(--shadow-selected); }
+.card-check {
+  position: absolute; right: -18px; top: -18px;
+  width: 76px; height: 76px; border-radius: 50%; background: var(--verm);
+  display: flex; align-items: center; justify-content: center;
+  animation: fade-in var(--dur-fast) var(--ease-out) both;
+}
+.card-preview {
+  height: 410px; margin: 26px 26px 0; border-radius: var(--r-inner); background: var(--tint);
+  display: flex; align-items: center; justify-content: center; overflow: hidden;
+}
+.card-body { padding: 26px 36px; }
+
+/* ---------- StripPreview ---------- */
+.strip { background: var(--strip-white); box-shadow: var(--shadow-strip); display: inline-block; }
+.strip-cells { display: flex; flex-direction: column; }
+.strip-cells.row { flex-direction: row; }
+.strip-cell { border-radius: var(--r-photo); overflow: hidden; }
+.strip-foot { text-align: center; margin-top: 12px; }
+.strip-caption { color: var(--ink-2); font-weight: 600; margin-top: 4px; white-space: nowrap; }
+.strip-image { box-shadow: var(--shadow-strip); background: var(--strip-white); }
+
+/* ---------- Kamera ---------- */
+.video { width: 100%; height: 100%; object-fit: cover; display: block; background: var(--illu-sand); }
+.video.mirrored { transform: scaleX(-1); }
+.camera-card { border-radius: var(--r-preview); overflow: hidden; box-shadow: var(--shadow-preview); background: var(--illu-sand); }
+.camera-full { left: 40px; top: 40px; width: 1840px; height: 1000px; border-radius: var(--r-camera); overflow: hidden; background: var(--illu-sand); }
+
+/* ---------- ViewfinderCorners ---------- */
+.corner { position: absolute; width: 0; height: 0; transform-origin: 0 0; }
+.corner > div {
+  width: 90px; height: 90px;
+  border-left: 8px solid var(--paper); border-top: 8px solid var(--paper);
+  border-top-left-radius: 26px;
+}
+
+/* ---------- CountdownDisc ---------- */
+.disc {
+  position: absolute; left: 1400px; top: 330px; width: 380px; height: 380px; border-radius: 50%;
+  background: var(--paper-96); border: 14px solid var(--verm);
+  display: flex; align-items: center; justify-content: center;
+}
+.disc-num {
+  font-family: var(--font-serif); font-size: 250px; font-weight: 600; line-height: 1;
+  margin-top: -8px; color: var(--ink);
+  animation: tick var(--dur-base) var(--ease-out-cubic) both;
+}
+@keyframes tick { from { opacity: 0; transform: scale(1.08); } to { opacity: 1; transform: scale(1); } }
+
+/* ---------- Flash, thumbnail ---------- */
+.flash { position: absolute; inset: 0; background: var(--strip-white); pointer-events: none; animation: flash 150ms linear both; }
+@keyframes flash { 0% { opacity: 0; } 40% { opacity: 0.9; } 100% { opacity: 0; } }
+.thumb {
+  position: absolute; left: 96px; top: 760px; width: 236px; height: 176px;
+  transform: rotate(-5deg); box-shadow: var(--shadow-thumb);
+  border: 8px solid var(--strip-white); background: var(--strip-white); overflow: hidden;
+  animation: fade-in var(--dur-base) var(--ease-out) both;
+}
+.thumb img { width: 100%; height: 100%; object-fit: cover; }
+
+/* ---------- Toast, dialog, skeleton ---------- */
+.toast {
+  position: absolute; left: 50%; top: 40px; transform: translateX(-50%);
+  height: 80px; padding: 0 40px; border-radius: var(--r-pill);
+  background: var(--paper); border: 2px solid var(--line);
+  display: inline-flex; align-items: center;
+  font-size: 28px; font-weight: 600; color: var(--ink); white-space: nowrap; max-width: 1700px;
+  overflow: hidden; text-overflow: ellipsis;
+  animation: fade-in var(--dur-base) var(--ease-out) both; z-index: 20;
+}
+.scrim { position: absolute; inset: 0; background: var(--scrim); animation: fade-in var(--dur-sheet) var(--ease-out) both; z-index: 10; }
+.dialog {
+  position: absolute; left: 50%; top: 50%; width: 900px; transform: translate(-50%, -50%);
+  background: var(--paper); border: 3px solid var(--line); border-radius: var(--r-card);
+  padding: 56px; text-align: left;
+}
+.dialog-actions { display: flex; gap: 26px; margin-top: 48px; }
+.skeleton { background: var(--tint); border-radius: var(--r-inner); animation: pulse 1.2s ease-in-out infinite alternate; }
+@keyframes pulse { from { opacity: 1; } to { opacity: 0.55; } }
+
+/* ---------- Photo cards (Review, Filter) ---------- */
+.photo { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: var(--r-inner); background: var(--tint); }
+
+@media (prefers-reduced-motion: reduce) {
+  .screen { animation-name: fade-in; }
+  .disc-num { animation-name: fade-in; }
+  .btn:active:not(:disabled) { transform: none; }
+}
