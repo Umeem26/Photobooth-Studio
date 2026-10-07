@@ -1,0 +1,23 @@
+# Van de Booth (id: vandebooth)
+
+Aplikasi photobooth desktop Java Swing. Fondasi: repo tugas besar PBO "Photobooth-Studio".
+
+## Aturan tetap (berlaku di semua fase)
+
+- Commit langsung ke `main`, commit kecil dan fokus satu perubahan.
+- Dilarang: force-push, rewrite riwayat (rebase/amend/filter-repo pada commit yang sudah ada), membuat GitHub Release.
+- Jangan pernah mencetak nilai secret (token, client secret, password) ke chat, log, atau file.
+- Dependency hanya dari Maven Central, dikelola lewat `pom.xml`. Jangan commit JAR.
+- Hemat token: jangan membaca ulang seluruh repo, baca hanya file/bagian yang relevan; jangan menjelaskan panjang.
+- Laporan akhir tiap tugas maksimal 15 baris.
+
+## Build
+
+- `./mvnw -q verify` (Windows: `mvnw.cmd -q verify`) menjalankan test dan membuat `target/vandebooth.jar`.
+- Jalankan: `java -jar target/vandebooth.jar`. Java 17.
+- Test harus headless (tanpa webcam/GUI).
+
+## Struktur
+
+- `src/main/java`: `MainApp` (default package), `gui`, `service` (Facade), `hardware` (kamera), `factory`, `template`, `filter`, `export`, `repository`, `config`, `utils`, `exception`.
+- Konfigurasi: `src/main/resources/config.properties` (default output `~/VanDeBooth`), bisa ditimpa `./config.properties` atau `-Dvandebooth.output.dir=...`.
