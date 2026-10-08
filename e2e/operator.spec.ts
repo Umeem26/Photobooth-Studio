@@ -1,4 +1,6 @@
+import { readFileSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
+import { TEST_FEED } from './feed';
 import { expectScreen, injectEnv, settle, shot } from './helpers';
 import { randomPin, startTestSidecar, type TestSidecar } from './sidecar';
 
@@ -23,17 +25,27 @@ async function api(page: Page, method: string, path: string, data?: unknown, bod
   return res;
 }
 
-/** JPEG 1440x1080 dibuat di browser (canvas), dipakai untuk semua frame. */
+/** Frame pertama video uji sebagai JPEG mentah (penanda SOI..EOI). */
+function feedFrame(): Buffer {
+  const data = readFileSync(TEST_FEED);
+  const start = data.indexOf(Buffer.from([0xff, 0xd8]));
+  return data.subarray(start, data.indexOf(Buffer.from([0xff, 0xd9]), start) + 2);
+}
+
+/** JPEG 1440x1080 dibuat di browser (canvas, frame video uji dipotong 4:3), dipakai untuk semua frame. */
 async function makeJpeg(page: Page): Promise<Buffer> {
-  const dataUrl = await page.evaluate(() => {
+  const dataUrl = await page.evaluate(async (src) => {
+    const img = new Image();
+    img.src = `data:image/jpeg;base64,${src}`;
+    await img.decode();
     const c = document.createElement('canvas');
     c.width = 1440;
     c.height = 1080;
     const g = c.getContext('2d')!;
-    g.fillStyle = 'rgb(120, 160, 200)';
-    g.fillRect(0, 0, 1440, 1080);
+    const sw = img.naturalHeight * (4 / 3);
+    g.drawImage(img, (img.naturalWidth - sw) / 2, 0, sw, img.naturalHeight, 0, 0, 1440, 1080);
     return c.toDataURL('image/jpeg', 0.92);
-  });
+  }, feedFrame().toString('base64'));
   return Buffer.from(dataUrl.split(',')[1], 'base64');
 }
 
