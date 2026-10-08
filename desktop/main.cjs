@@ -58,6 +58,7 @@ function createWindow() {
     fullscreen: KIOSK,
     kiosk: KIOSK,
     backgroundColor: '#F7EFE2',
+    icon: path.join(__dirname, 'build', 'icon.ico'),
     autoHideMenuBar: true,
     // Langsung tampil: getUserMedia dari jendela tersembunyi bisa menggantung di Windows
     show: true,

@@ -1,6 +1,6 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
 
-/** Preview kamera live (dicermin). Foto yang diambil tetap tidak dicermin. */
+/** Preview kamera live (dicermin). Foto yang diambil juga dicermin agar sama dengan preview. */
 export const LiveVideo = forwardRef<HTMLVideoElement | null, { stream: MediaStream | null }>(function LiveVideo(
   { stream },
   ref,

@@ -25,6 +25,7 @@
       "main.cjs",
       "preload.cjs",
       "sidecar.cjs",
+      "build/icon.ico",
       "package.json"
     ],
     "extraResources": [

@@ -14,7 +14,7 @@ State machine tunggal (reducer, tanpa library tambahan): `attract -> layout -> c
 
 ## Aturan
 - **Idle**: 90 detik tanpa sentuhan di Layout/Review/Filter -> kembali ke Attract, sesi belum selesai ditandai `abandoned` di meta.
-- **Kamera**: resolusi ideal 1920x1080, fallback otomatis. Foto disimpan **tidak** dicermin (preview dicermin). Crop tengah ke 4:3. JPEG kualitas 0,92.
+- **Kamera**: resolusi ideal 1920x1080, fallback otomatis. Foto disimpan **dicermin** agar sama dengan preview (yang juga dicermin). Crop tengah ke 4:3. JPEG kualitas 0,92.
 - **Error**: kamera hilang/ditolak -> layar Error "Camera not found..." + "Try again"; sidecar tidak merespons -> "The booth service is not responding." + "Try again" (cek `/health`); gagal compose/export -> toast, state tidak berubah.
 - **Privasi**: foto hanya di disk lokal (`~/VanDeBooth`). Tidak ada unggahan.
 - **Keyboard cadangan** (untuk uji tanpa layar sentuh): Enter = tombol primary, Esc = Cancel/Back.
