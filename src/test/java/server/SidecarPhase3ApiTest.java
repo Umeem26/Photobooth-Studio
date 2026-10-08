@@ -15,6 +15,7 @@ import com.google.zxing.client.j2se.BufferedImageLuminanceSource;
 import com.google.zxing.common.HybridBinarizer;
 import com.google.zxing.qrcode.QRCodeReader;
 import config.AppConfig;
+import admin.TestPins;
 import config.ConfigStore;
 
 import java.awt.image.BufferedImage;
@@ -34,6 +35,7 @@ import javax.imageio.ImageIO;
 class SidecarPhase3ApiTest {
 
     private static final String TOKEN = "test-token-0123456789abcdef";
+    private final String pin = TestPins.random(6);
 
     @TempDir
     Path tmp;
@@ -106,7 +108,7 @@ class SidecarPhase3ApiTest {
     }
 
     private String loginAsOperator() throws Exception {
-        HttpResponse<byte[]> r = send("POST", "/api/admin/pin", "{\"pin\":\"482915\"}");
+        HttpResponse<byte[]> r = send("POST", "/api/admin/pin", "{\"pin\":\"" + pin + "\"}");
         assertEquals(201, r.statusCode(), new String(r.body()));
         return obj(r).get("token").getAsString();
     }
@@ -211,19 +213,19 @@ class SidecarPhase3ApiTest {
         assertEquals(409, send("POST", "/api/admin/login", "{\"pin\":\"0000\"}").statusCode(), "belum ada PIN bawaan");
         assertEquals(400, send("POST", "/api/admin/pin", "{\"pin\":\"12\"}").statusCode());
         String token = loginAsOperator();
-        assertEquals(409, send("POST", "/api/admin/pin", "{\"pin\":\"111111\"}").statusCode());
+        assertEquals(409, send("POST", "/api/admin/pin", "{\"pin\":\"" + TestPins.other(pin) + "\"}").statusCode());
         assertTrue(obj(send("GET", "/api/admin/pin", (String) null)).get("set").getAsBoolean());
-        assertFalse(Files.readString(tmp.resolve("cfg/operator-pin.properties")).contains("482915"));
+        assertFalse(Files.readString(tmp.resolve("cfg/operator-pin.properties")).contains(pin));
 
         for (int left = 4; left >= 1; left--) {
-            HttpResponse<byte[]> wrong = send("POST", "/api/admin/login", "{\"pin\":\"000000\"}");
+            HttpResponse<byte[]> wrong = send("POST", "/api/admin/login", "{\"pin\":\"" + TestPins.other(pin) + "\"}");
             assertEquals(403, wrong.statusCode());
             assertEquals(left, obj(wrong).get("attemptsLeft").getAsInt());
         }
-        HttpResponse<byte[]> locked = send("POST", "/api/admin/login", "{\"pin\":\"000000\"}");
+        HttpResponse<byte[]> locked = send("POST", "/api/admin/login", "{\"pin\":\"" + TestPins.other(pin) + "\"}");
         assertEquals(423, locked.statusCode());
         assertEquals(30, obj(locked).get("retryAfterSeconds").getAsInt());
-        assertEquals(423, send("POST", "/api/admin/login", "{\"pin\":\"482915\"}").statusCode());
+        assertEquals(423, send("POST", "/api/admin/login", "{\"pin\":\"" + pin + "\"}").statusCode());
 
         assertEquals(200, admin("GET", "/api/admin/config", null, token).statusCode(), "token lama tetap berlaku");
         assertEquals(200, admin("POST", "/api/admin/logout", "{}", token).statusCode());

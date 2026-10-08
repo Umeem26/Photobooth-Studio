@@ -19,9 +19,9 @@ Aplikasi photobooth desktop Java Swing. Fondasi: repo tugas besar PBO "Photoboot
 
 ## Struktur
 
-- `src/main/java`: `MainApp` (default package, mode `--server`), `server` (sidecar HTTP), `service` (Facade), `hardware` (kamera), `factory`, `template`, `filter`, `export`, `repository`, `config`, `utils`, `exception`. GUI Swing lama ada di tag `legacy-swing-ui`.
+- `src/main/java`: `MainApp` (default package, mode `--server`), `server` (sidecar HTTP, SidecarApp), `service` (Facade), `share` (ShareServer jaringan lokal), `print`, `payment`, `admin` (Mode Operator), `hardware` (kamera), `factory`, `template`, `filter`, `export`, `repository`, `config`, `utils`, `exception`. GUI Swing lama ada di tag `legacy-swing-ui`.
 - `ui/` (React + Vite + TS), `desktop/` (Electron), `e2e/` (Playwright), `docs/` (spesifikasi, mockup, screenshot). Skrip root: `npm run dev|build|test|e2e`.
-- Konfigurasi: `src/main/resources/config.properties` (default output `~/VanDeBooth`), bisa ditimpa `./config.properties` atau `-Dvandebooth.output.dir=...`.
+- Konfigurasi: `src/main/resources/config.properties` (default output `~/VanDeBooth`), ditimpa `./config.properties`, `<folder config pengguna>/config.properties` (Mode Operator), lalu `-Dvandebooth.<kunci>=...`. Tes wajib memakai `vandebooth.config.dir` sementara; jangan menulis PIN/secret ke repo.
 
 ## Aturan UI (Fase 2+)
 
