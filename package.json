@@ -1,7 +1,7 @@
 {
   "name": "vandebooth",
   "private": true,
-  "version": "0.2.0",
+  "version": "2.0.0",
   "description": "Van de Booth: kiosk photobooth (Electron + React UI + Java sidecar)",
   "workspaces": [
     "ui",
@@ -11,7 +11,9 @@
     "dev": "node scripts/dev.mjs",
     "build": "node scripts/build.mjs",
     "test": "npm run test --workspace ui && npm run test --workspace desktop",
-    "e2e": "node scripts/build.mjs && playwright test"
+    "e2e": "node scripts/build.mjs && playwright test",
+    "package": "node scripts/package.mjs",
+    "e2e:packaged": "playwright test --project packaged"
   },
   "engines": {
     "node": ">=20"

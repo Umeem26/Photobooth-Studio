@@ -27,6 +27,20 @@ test('findJava honours VANDEBOOTH_JAVA and falls back to java', () => {
   assert.equal(findJava({}), 'java');
 });
 
+test('findJava prefers the bundled runtime of a packaged app', () => {
+  const res = fs.mkdtempSync(path.join(os.tmpdir(), 'vandebooth-res-'));
+  const bin = path.join(res, 'runtime', 'bin');
+  fs.mkdirSync(bin, { recursive: true });
+  const exe = path.join(bin, process.platform === 'win32' ? 'java.exe' : 'java');
+  fs.writeFileSync(exe, '');
+  try {
+    assert.equal(findJava({}, res), exe);
+    assert.equal(findJava({ VANDEBOOTH_JAVA: '/x/java' }, res), '/x/java');
+  } finally {
+    fs.rmSync(res, { recursive: true, force: true });
+  }
+});
+
 test('sidecar starts on a random port, requires the token, and exits when stopped',
   { skip: !fs.existsSync(JAR) && 'target/vandebooth.jar belum dibuat (npm run build)' },
   async () => {

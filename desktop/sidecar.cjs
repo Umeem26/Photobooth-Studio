@@ -22,8 +22,13 @@ function newToken() {
   return crypto.randomBytes(24).toString('hex');
 }
 
-function findJava(env = process.env) {
+function findJava(env = process.env, resourcesPath = process.resourcesPath) {
   if (env.VANDEBOOTH_JAVA) return env.VANDEBOOTH_JAVA;
+  // Aplikasi terpaket: runtime ringkas hasil jlink di resources/runtime
+  if (resourcesPath) {
+    const bundled = path.join(resourcesPath, 'runtime', 'bin', process.platform === 'win32' ? 'java.exe' : 'java');
+    if (fs.existsSync(bundled)) return bundled;
+  }
   if (env.JAVA_HOME) {
     const bin = path.join(env.JAVA_HOME, 'bin', process.platform === 'win32' ? 'java.exe' : 'java');
     if (fs.existsSync(bin)) return bin;

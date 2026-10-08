@@ -28,3 +28,8 @@ node_modules/
 ui/dist/
 test-results/
 playwright-report/
+
+# Paket Electron
+desktop/build/runtime/
+desktop/dist/
+desktop/release/

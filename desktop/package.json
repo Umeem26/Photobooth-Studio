@@ -1,13 +1,74 @@
 {
   "name": "@vandebooth/desktop",
   "private": true,
-  "version": "0.2.0",
+  "version": "2.0.0",
   "main": "main.cjs",
   "scripts": {
     "start": "electron .",
-    "test": "node --test"
+    "test": "node --test",
+    "package": "node ../scripts/package.mjs"
   },
   "devDependencies": {
-    "electron": "^44.6.0"
+    "electron": "44.6.0",
+    "electron-builder": "^26.15.3"
+  },
+  "description": "Van de Booth: offline-first photobooth for events",
+  "author": "Umem",
+  "build": {
+    "appId": "com.umem.vandebooth",
+    "productName": "Van de Booth",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "main.cjs",
+      "preload.cjs",
+      "sidecar.cjs",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "../ui/dist",
+        "to": "ui"
+      },
+      {
+        "from": "build/runtime",
+        "to": "runtime"
+      },
+      {
+        "from": "../target/vandebooth.jar",
+        "to": "vandebooth.jar"
+      }
+    ],
+    "npmRebuild": false,
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico",
+      "signAndEditExecutable": true
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Van de Booth",
+      "deleteAppDataOnUninstall": false,
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico"
+    },
+    "artifactName": "VanDeBooth-Setup-${version}.${ext}",
+    "electronLanguages": [
+      "en-US"
+    ],
+    "asar": false
   }
 }
