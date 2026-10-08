@@ -25,7 +25,7 @@ Aplikasi photobooth desktop Java Swing. Fondasi: repo tugas besar PBO "Photoboot
 
 ## Aturan UI (Fase 2+)
 
-- Sebelum mengerjakan UI baca docs/ (design-system.md, flow.md, architecture.md, mockups/).
+- Sebelum mengerjakan UI baca docs/ (design-system.md, flow.md, ARCHITECTURE.md, phase2-architecture.md, mockups/).
 - UI berbahasa Inggris lewat strings.ts.
 - Warna hanya dari token; tanpa gradasi dan emoji.
 - Tombol >= 96 px pada kanvas 1920x1080.
