@@ -118,6 +118,8 @@ test('operator: buat PIN, ubah nama event (footer strip berubah), galeri hapus',
   const heights = await page.locator('[data-screen="operator"] button, [data-screen="operator"] input').evaluateAll(
     (els) => els.map((e) => e.getBoundingClientRect().height));
   for (const h of heights) expect(h).toBeGreaterThanOrEqual(72);
+  await expect(page.getByTestId('layouts-offered').getByRole('checkbox')).toHaveCount(6);
+  await shot(page, '9-operator-event.png');
 
   // Ubah nama event
   const name = page.getByTestId('event-name');
@@ -131,6 +133,22 @@ test('operator: buat PIN, ubah nama event (footer strip berubah), galeri hapus',
   expect(await rowDiff(page, before, after, 100, 500)).toBe(0);
   expect(await rowDiff(page, before, after, 1580, 1750)).toBeGreaterThan(1);
 
+  // Panel Photos, Payment, Printing, Status (screenshot dokumentasi)
+  await page.getByTestId('menu-photos').click();
+  await expect(page.getByTestId('operator-title')).toHaveText('Photos');
+  await expect(page.getByTestId('toast')).toBeHidden({ timeout: 8_000 });
+  await shot(page, '10-operator-photos.png');
+  await page.getByTestId('menu-payment').click();
+  await expect(page.getByTestId('operator-title')).toHaveText('Payment');
+  await shot(page, '11-operator-payment.png');
+  await page.getByTestId('menu-printing').click();
+  await expect(page.getByTestId('operator-title')).toHaveText('Printing');
+  await shot(page, '13-operator-printing.png');
+  await page.getByTestId('menu-status').click();
+  await expect(page.getByTestId('operator-title')).toHaveText('Status');
+  await expect(page.getByTestId('status-camera')).toBeVisible();
+  await shot(page, '15-operator-status.png');
+
   // Panel Sharing (mockup 7)
   await page.getByTestId('menu-sharing').click();
   await expect(page.getByTestId('operator-title')).toHaveText('Sharing');
@@ -139,7 +157,7 @@ test('operator: buat PIN, ubah nama event (footer strip berubah), galeri hapus',
   await expect(page.getByTestId('share-test-qr')).toBeVisible();
   await expect(page.getByTestId('share-expiry').getByRole('radio', { name: '6 h' })).toHaveAttribute('aria-checked', 'true');
   await expect(page.getByTestId('toast')).toBeHidden({ timeout: 8_000 }); // toast "Saved." sementara
-  await shot(page, '9-operator-sharing.png');
+  await shot(page, '12-operator-sharing.png');
 
   // Galeri: dua sesi -> hapus satu dengan konfirmasi
   await page.getByTestId('menu-gallery').click();
@@ -147,7 +165,7 @@ test('operator: buat PIN, ubah nama event (footer strip berubah), galeri hapus',
   await expect(items).toHaveCount(2);
   await expect(page.locator('.gallery-thumb[src]')).toHaveCount(2);
   await settle(page);
-  await shot(page, '10-operator-gallery.png');
+  await shot(page, '14-operator-gallery.png');
   await items.first().getByTestId('gallery-delete').click();
   await expect(page.getByTestId('confirm')).toContainText('Delete this session?');
   await page.getByTestId('confirm-yes').click();
@@ -167,4 +185,58 @@ test('operator: buat PIN, ubah nama event (footer strip berubah), galeri hapus',
   await expectScreen(page, 'operator');
   await page.getByTestId('exit-operator').click();
   await expectScreen(page, 'attract');
+});
+
+test('operator: "Layouts offered" membatasi kartu di Layout screen dan minimal satu tetap aktif', async ({ page }) => {
+  await injectEnv(page, sidecar);
+  await page.goto('/');
+  await expectScreen(page, 'attract');
+  await holdWordmark(page);
+  await typePin(page, PIN);
+  await expectScreen(page, 'operator');
+  const group = page.getByTestId('layouts-offered');
+  for (const id of ['vertical-3', 'horizontal-3', 'grid-4', 'grid-6']) {
+    await group.getByTestId(`offer-${id}`).click();
+    await expect(group.getByTestId(`offer-${id}`)).toHaveAttribute('aria-checked', 'false');
+  }
+  for (const h of await group.getByRole('checkbox').evaluateAll((els) => els.map((e) => e.getBoundingClientRect().height))) {
+    expect(h).toBeGreaterThanOrEqual(72);
+  }
+  // Tersisa vertical-4 dan postcard-1; sisakan satu: tombol terakhir nonaktif
+  await group.getByTestId('offer-vertical-4').click();
+  await expect(group.getByTestId('offer-postcard-1')).toBeDisabled();
+  await expect(group.getByTestId('offer-postcard-1')).toHaveAttribute('aria-checked', 'true');
+
+  // Tersimpan di sidecar (tervalidasi dan berurutan)
+  const cfg = await (await api(page, 'GET', '/api/config')).json();
+  expect(cfg.layoutsOffered).toEqual(['postcard-1']);
+
+  await page.getByTestId('exit-operator').click();
+  await expectScreen(page, 'attract');
+  await page.getByTestId('start').click();
+  await expectScreen(page, 'layout');
+  await expect(page.locator('[data-testid^="layout-"][aria-pressed]')).toHaveCount(1);
+  await expect(page.getByTestId('layout-postcard-1')).toHaveAttribute('aria-pressed', 'true');
+  expect((await page.getByTestId('next').boundingBox())!.height).toBeGreaterThanOrEqual(96);
+  await page.keyboard.press('Escape');
+  await expectScreen(page, 'attract');
+
+  // Kembalikan: dua layout (kartu menyesuaikan grid), lalu semua
+  await holdWordmark(page);
+  await typePin(page, PIN);
+  await expectScreen(page, 'operator');
+  await group.getByTestId('offer-vertical-4').click();
+  await expect(group.getByTestId('offer-vertical-4')).toHaveAttribute('aria-checked', 'true');
+  await page.getByTestId('exit-operator').click();
+  await page.getByTestId('start').click();
+  await expectScreen(page, 'layout');
+  await expect(page.locator('[data-testid^="layout-"][aria-pressed]')).toHaveCount(2);
+  await expect(page.getByTestId('layout-vertical-4')).toHaveAttribute('aria-pressed', 'true'); // default: yang pertama
+  await page.keyboard.press('Escape');
+  await expectScreen(page, 'attract');
+
+  await holdWordmark(page);
+  await typePin(page, PIN);
+  for (const id of ['vertical-3', 'horizontal-3', 'grid-4', 'grid-6']) await group.getByTestId(`offer-${id}`).click();
+  await expect(group.locator('[aria-checked="true"]')).toHaveCount(6);
 });
