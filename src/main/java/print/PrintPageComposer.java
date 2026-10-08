@@ -9,7 +9,8 @@ import java.awt.image.BufferedImage;
 /**
  * Menyusun halaman kertas 4x6 inci (300 dpi) dari strip: skala ke area cetak dengan
  * margin 3 mm tanpa mengubah rasio. two-up = dua strip berdampingan untuk dipotong.
- * Strip vertikal memakai halaman potret, strip horizontal halaman lanskap.
+ * Two-up hanya untuk strip 2x6. Strip/layout potret memakai halaman potret, layout lanskap (6x4)
+ * dicetak tunggal pada halaman lanskap (kertas diputar otomatis).
  */
 public final class PrintPageComposer {
 
@@ -21,7 +22,13 @@ public final class PrintPageComposer {
     private PrintPageComposer() {
     }
 
+    /** Strip 2x6 (rasio 1:3) saja yang boleh two-up; layout 6x4 dan 4x6 selalu tunggal. */
+    public static boolean isTwoUpStrip(BufferedImage strip) {
+        return strip.getHeight() >= 2.5 * strip.getWidth();
+    }
+
     public static BufferedImage compose(BufferedImage strip, boolean twoUp) {
+        twoUp = twoUp && isTwoUpStrip(strip);
         boolean portrait = strip.getHeight() >= strip.getWidth();
         int w = portrait ? SHORT : LONG;
         int h = portrait ? LONG : SHORT;
@@ -34,14 +41,10 @@ public final class PrintPageComposer {
             g.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
             if (!twoUp) {
                 draw(g, strip, new Rectangle(MARGIN, MARGIN, w - 2 * MARGIN, h - 2 * MARGIN));
-            } else if (portrait) {
+            } else {
                 int half = w / 2;
                 draw(g, strip, new Rectangle(MARGIN, MARGIN, half - 2 * MARGIN, h - 2 * MARGIN));
                 draw(g, strip, new Rectangle(half + MARGIN, MARGIN, half - 2 * MARGIN, h - 2 * MARGIN));
-            } else {
-                int half = h / 2;
-                draw(g, strip, new Rectangle(MARGIN, MARGIN, w - 2 * MARGIN, half - 2 * MARGIN));
-                draw(g, strip, new Rectangle(MARGIN, half + MARGIN, w - 2 * MARGIN, half - 2 * MARGIN));
             }
         } finally {
             g.dispose();

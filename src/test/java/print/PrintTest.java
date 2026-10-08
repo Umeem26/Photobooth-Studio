@@ -51,17 +51,24 @@ class PrintTest {
     }
 
     @Test
-    void twoUpPlacesTwoStripsSideBySideAndLandscapeForHorizontal() {
+    void twoUpOnlyForStripsAndLandscapeLayoutsPrintSingle() {
         BufferedImage page = PrintPageComposer.compose(strip(780, 2300), true);
         assertEquals(Color.RED.getRGB(), page.getRGB(300, 900));
         assertEquals(Color.RED.getRGB(), page.getRGB(900, 900));
         assertEquals(Color.WHITE.getRGB(), page.getRGB(600, 900), "celah potong di tengah");
 
-        BufferedImage land = PrintPageComposer.compose(strip(2130, 720), true);
+        // Layout 6x4 (lanskap) dan 4x6 (grid-6) selalu tunggal, two-up diabaikan
+        BufferedImage land = PrintPageComposer.compose(strip(1800, 1200), true);
         assertEquals(1800, land.getWidth());
         assertEquals(1200, land.getHeight());
         assertEquals(Color.RED.getRGB(), land.getRGB(900, 300));
-        assertEquals(Color.RED.getRGB(), land.getRGB(900, 900));
+        assertEquals(Color.RED.getRGB(), land.getRGB(900, 600), "tidak ada celah potong: satu gambar utuh");
+        BufferedImage portrait = PrintPageComposer.compose(strip(1200, 1800), true);
+        assertEquals(1200, portrait.getWidth());
+        assertEquals(Color.RED.getRGB(), portrait.getRGB(600, 900), "grid-6 tunggal, tanpa celah di tengah");
+        assertTrue(PrintPageComposer.isTwoUpStrip(strip(600, 1800)));
+        assertFalse(PrintPageComposer.isTwoUpStrip(strip(1200, 1800)));
+        assertFalse(PrintPageComposer.isTwoUpStrip(strip(1800, 1200)));
     }
 
     @Test

@@ -40,6 +40,26 @@ class ConfigStoreTest {
     }
 
     @Test
+    void layoutsOfferedDefaultsToAllSixAndPersistsValidatedSelection() throws Exception {
+        ConfigStore store = store();
+        assertEquals(List.of("vertical-4", "vertical-3", "horizontal-3", "postcard-1", "grid-4", "grid-6"),
+                store.current().layoutsOffered());
+
+        // urutan mengikuti definisi layout, bukan urutan input
+        AppConfig next = store.update(Map.of(AppConfig.LAYOUTS_OFFERED_KEY, " grid-6 , vertical-4 "));
+        assertEquals(List.of("vertical-4", "grid-6"), next.layoutsOffered());
+        Properties saved = new Properties();
+        try (InputStream in = Files.newInputStream(tmp.resolve("cfg").resolve("config.properties"))) {
+            saved.load(in);
+        }
+        assertEquals("vertical-4,grid-6", saved.getProperty(AppConfig.LAYOUTS_OFFERED_KEY));
+
+        assertThrows(IllegalArgumentException.class, () -> store.update(Map.of(AppConfig.LAYOUTS_OFFERED_KEY, ",")));
+        assertThrows(IllegalArgumentException.class, () -> store.update(Map.of(AppConfig.LAYOUTS_OFFERED_KEY, "vertical-4,wide-9")));
+        assertEquals(List.of("vertical-4", "grid-6"), store.current().layoutsOffered(), "gagal validasi tidak mengubah apa pun");
+    }
+
+    @Test
     void updateAppliesImmediatelyNotifiesAndPersistsAtomically() throws Exception {
         ConfigStore store = store();
         List<AppConfig> seen = new ArrayList<>();

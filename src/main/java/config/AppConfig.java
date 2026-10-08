@@ -8,10 +8,14 @@ import java.nio.file.Path;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Properties;
 import java.util.Set;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import template.StripLayout;
 
 /**
  * Konfigurasi aplikasi (immutable, tervalidasi). Urutan prioritas (tertinggi di bawah):
@@ -39,6 +43,7 @@ public final class AppConfig {
     public static final String PRINT_LAYOUT_KEY = "print.layout";
     public static final String PRINT_PAPER_KEY = "print.paper";
     public static final String PRINT_MODE_KEY = "print.mode";
+    public static final String LAYOUTS_OFFERED_KEY = "layouts.offered";
 
     public static final String SYSTEM_PROPERTY_PREFIX = "vandebooth.";
     public static final String OUTPUT_DIR_SYSTEM_PROPERTY = SYSTEM_PROPERTY_PREFIX + OUTPUT_DIR_KEY;
@@ -51,12 +56,13 @@ public final class AppConfig {
     public static final List<String> KEYS = List.of(OUTPUT_DIR_KEY, EVENT_NAME_KEY, EVENT_DATE_KEY, MAX_RETAKES_KEY,
             COUNTDOWN_SECONDS_KEY, PAUSE_SECONDS_KEY, PAYMENT_ENABLED_KEY, PAYMENT_PRICE_KEY, SHARE_ENABLED_KEY,
             SHARE_PORT_KEY, SHARE_HOST_KEY, SHARE_BIND_KEY, SHARE_EXPIRY_KEY, PRINT_PRINTER_KEY, PRINT_MAX_COPIES_KEY,
-            PRINT_LAYOUT_KEY, PRINT_PAPER_KEY, PRINT_MODE_KEY);
+            PRINT_LAYOUT_KEY, PRINT_PAPER_KEY, PRINT_MODE_KEY, LAYOUTS_OFFERED_KEY);
 
     /** Kunci yang boleh diubah lewat Mode Operator. */
     public static final Set<String> EDITABLE_KEYS = Set.of(EVENT_NAME_KEY, EVENT_DATE_KEY, MAX_RETAKES_KEY,
             COUNTDOWN_SECONDS_KEY, PAUSE_SECONDS_KEY, PAYMENT_ENABLED_KEY, PAYMENT_PRICE_KEY, SHARE_ENABLED_KEY,
-            SHARE_PORT_KEY, SHARE_HOST_KEY, SHARE_EXPIRY_KEY, PRINT_PRINTER_KEY, PRINT_MAX_COPIES_KEY, PRINT_LAYOUT_KEY);
+            SHARE_PORT_KEY, SHARE_HOST_KEY, SHARE_EXPIRY_KEY, PRINT_PRINTER_KEY, PRINT_MAX_COPIES_KEY, PRINT_LAYOUT_KEY,
+            LAYOUTS_OFFERED_KEY);
 
     public static final Set<Integer> SHARE_EXPIRY_CHOICES = Set.of(1, 6, 24);
     private static final Pattern HOST = Pattern.compile("[A-Za-z0-9.\\-]{0,253}");
@@ -160,8 +166,26 @@ public final class AppConfig {
         oneOf(v, PRINT_LAYOUT_KEY, "single", Set.of("single", "two-up"));
         oneOf(v, PRINT_PAPER_KEY, "4x6", Set.of("4x6"));
         oneOf(v, PRINT_MODE_KEY, "system", Set.of("system", "file"));
+        v.setProperty(LAYOUTS_OFFERED_KEY, normalizeLayouts(str(v, LAYOUTS_OFFERED_KEY, "")));
 
         return new AppConfig(v, expandHome(rawDir), date, clock);
+    }
+
+    /** Daftar id layout dipisah koma; kosong = semua. Id harus dikenal, minimal satu, urutan mengikuti layout. */
+    private static String normalizeLayouts(String raw) {
+        if (raw.isEmpty()) {
+            return Arrays.stream(StripLayout.values()).map(StripLayout::id).collect(Collectors.joining(","));
+        }
+        Set<String> wanted = new HashSet<>();
+        for (String part : raw.split(",")) {
+            String id = part.trim();
+            if (id.isEmpty()) continue;
+            if (StripLayout.byId(id).isEmpty()) throw new IllegalArgumentException(LAYOUTS_OFFERED_KEY + " berisi layout tidak dikenal: " + id);
+            wanted.add(id);
+        }
+        if (wanted.isEmpty()) throw new IllegalArgumentException(LAYOUTS_OFFERED_KEY + " minimal satu layout");
+        return Arrays.stream(StripLayout.values()).map(StripLayout::id).filter(wanted::contains)
+                .collect(Collectors.joining(","));
     }
 
     private static String str(Properties v, String key, String def) {
@@ -283,6 +307,9 @@ public final class AppConfig {
     public int printMaxCopies() { return integer(PRINT_MAX_COPIES_KEY); }
 
     public boolean printTwoUp() { return "two-up".equals(values.getProperty(PRINT_LAYOUT_KEY)); }
+
+    /** Id layout yang ditawarkan ke tamu (urutan tetap, minimal satu). */
+    public List<String> layoutsOffered() { return List.of(values.getProperty(LAYOUTS_OFFERED_KEY).split(",")); }
 
     public boolean printToFile() { return "file".equals(values.getProperty(PRINT_MODE_KEY)); }
 }

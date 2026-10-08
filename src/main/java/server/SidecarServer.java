@@ -334,6 +334,7 @@ public class SidecarServer {
         body.put("event.date", config.eventDate().toString());
         body.put("maxRetakes", config.maxRetakes());
         body.put("photosPerLayout", photos);
+        body.put("layoutsOffered", config.layoutsOffered());
         body.put("countdownSeconds", config.countdownSeconds());
         body.put("pauseSeconds", config.pauseSeconds());
         body.put("payment", Map.of("enabled", config.paymentEnabled(), "price", config.paymentPrice()));
@@ -365,6 +366,10 @@ public class SidecarServer {
         body.put("description", l.description());
         body.put("photos", l.photos());
         body.put("orientation", l.orientation().name().toLowerCase());
+        body.put("paper", l.paper());
+        body.put("canvas", Map.of("w", l.canvasWidth(), "h", l.canvasHeight()));
+        body.put("cells", l.cells().stream()
+                .map(c -> Map.of("x", c.x(), "y", c.y(), "w", c.w(), "h", c.h())).toList());
         return body;
     }
 

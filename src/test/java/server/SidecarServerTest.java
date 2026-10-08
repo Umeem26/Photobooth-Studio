@@ -147,15 +147,28 @@ class SidecarServerTest {
     }
 
     @Test
-    void layoutsListsThreeLayouts() throws Exception {
+    void layoutsListsSixLayoutsWithCanvasAndCells() throws Exception {
         JsonArray arr = json(send("GET", "/api/layouts", (String) null)).getAsJsonArray();
-        assertEquals(3, arr.size());
+        assertEquals(6, arr.size());
         JsonObject first = arr.get(0).getAsJsonObject();
         assertEquals("vertical-4", first.get("id").getAsString());
-        assertEquals("Vertical, 4 photos", first.get("name").getAsString());
+        assertEquals("Classic Strip", first.get("name").getAsString());
         assertEquals(4, first.get("photos").getAsInt());
         assertEquals("vertical", first.get("orientation").getAsString());
-        assertEquals("horizontal-3", arr.get(2).getAsJsonObject().get("id").getAsString());
+        assertEquals("2x6", first.get("paper").getAsString());
+        assertEquals(600, first.getAsJsonObject("canvas").get("w").getAsInt());
+        assertEquals(1800, first.getAsJsonObject("canvas").get("h").getAsInt());
+        assertEquals(4, first.getAsJsonArray("cells").size());
+        JsonObject cell = first.getAsJsonArray("cells").get(0).getAsJsonObject();
+        assertEquals(48, cell.get("x").getAsInt());
+        assertEquals(504, cell.get("w").getAsInt());
+        assertEquals(360, cell.get("h").getAsInt());
+        String[] ids = {"vertical-4", "vertical-3", "horizontal-3", "postcard-1", "grid-4", "grid-6"};
+        for (int i = 0; i < ids.length; i++) {
+            JsonObject l = arr.get(i).getAsJsonObject();
+            assertEquals(ids[i], l.get("id").getAsString());
+            assertEquals(l.get("photos").getAsInt(), l.getAsJsonArray("cells").size());
+        }
         assertEquals("horizontal", arr.get(2).getAsJsonObject().get("orientation").getAsString());
     }
 

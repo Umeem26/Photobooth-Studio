@@ -1,6 +1,7 @@
 package template;
 
 import model.StripTemplate;
+import template.StripLayout.Rect;
 
 import java.awt.Color;
 import java.awt.Graphics2D;
@@ -17,25 +18,17 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Strip bermerek Van de Booth (Fase 2): kertas putih, foto 4:3 dengan sudut membulat,
- * footer wordmark "Van de Booth" ("de" italic, "oo" vermilion) dan caption acara.
- * Frame resolusi apa pun di-crop tengah lalu di-scale ke 4:3.
+ * Strip bermerek Van de Booth: kertas putih, foto dengan sudut membulat, footer wordmark
+ * "Van de Booth" ("de" italic, "oo" vermilion) dan caption acara. Ukuran canvas, posisi sel,
+ * dan area footer datang dari {@link StripLayout}; frame berapa pun rasionya di-crop ke rasio sel.
  */
 public class BrandedStripTemplate implements StripTemplate {
 
-    // Ukuran dalam px output (skala 2,5x dari strip di mockup layar hasil)
-    static final int CELL_W = 640;
-    static final int CELL_H = 480;
-    static final int PAD = 70;
-    static final int PAD_BOTTOM = 55;
-    static final int GAP = 35;
-    static final int CELL_RADIUS = 15;
-    static final int FOOTER_TOP = 30;
-    static final int WORDMARK_SIZE = 70;
-    static final int WORDMARK_LINE = 84;
-    static final int CAPTION_SIZE = 38;
-    static final int CAPTION_GAP = 10;
-    static final int CAPTION_LINE = 46;
+    static final int CELL_RADIUS = 14;
+    /** Bagian atas foto dipertahankan lebih banyak (kepala): sisa crop vertikal dibuang 25% di atas, 75% di bawah. */
+    static final double TOP_BIAS = 0.25;
+    /** Batas foto yang dibuang per sisi (fraksi dimensi sumber). */
+    public static final double MAX_CROP_PER_SIDE = 0.125;
 
     static final Color PAPER = Color.WHITE;
     static final Color INK = new Color(0x241B16);
@@ -44,6 +37,7 @@ public class BrandedStripTemplate implements StripTemplate {
     static final Color TINT = new Color(0xEFE2CC);
 
     private static final String WORDMARK = "Van de Booth";
+    private static final double LINE = 1.2;
 
     private final StripLayout layout;
     private final String caption;
@@ -82,50 +76,39 @@ public class BrandedStripTemplate implements StripTemplate {
         return layout.photos();
     }
 
-    int footerHeight() {
-        return FOOTER_TOP + WORDMARK_LINE + (caption.isEmpty() ? 0 : CAPTION_GAP + CAPTION_LINE);
-    }
-
-    /** Ukuran strip output untuk layout dan caption ini. */
     public int width() {
-        int n = layout.photos();
-        return layout.orientation() == StripLayout.Orientation.VERTICAL
-                ? 2 * PAD + CELL_W
-                : 2 * PAD + n * CELL_W + (n - 1) * GAP;
+        return layout.canvasWidth();
     }
 
     public int height() {
-        int n = layout.photos();
-        int photos = layout.orientation() == StripLayout.Orientation.VERTICAL
-                ? n * CELL_H + (n - 1) * GAP
-                : CELL_H;
-        return PAD + photos + footerHeight() + PAD_BOTTOM;
+        return layout.canvasHeight();
     }
 
     /**
-     * Crop tengah ke 4:3 lalu scale ke ukuran sel. Dipakai juga sebelum filter
-     * agar filter berjalan pada gambar kecil.
+     * Area sumber (x, y, lebar, tinggi) yang di-crop agar berrasio sama dengan sel cw x ch.
+     * Horizontal di tengah; vertikal dengan bias ke atas supaya kepala tidak terpotong.
      */
-    public static BufferedImage fitCell(BufferedImage src) {
-        if (src.getWidth() == CELL_W && src.getHeight() == CELL_H) return src;
-        double target = (double) CELL_W / CELL_H;
-        int w = src.getWidth();
-        int h = src.getHeight();
-        int cw = w;
-        int ch = (int) Math.round(w / target);
-        if (ch > h) {
-            ch = h;
-            cw = (int) Math.round(h * target);
+    public static Rectangle cropRect(int sw, int sh, int cw, int ch) {
+        double target = (double) cw / ch;
+        int w = sw;
+        int h = (int) Math.round(sw / target);
+        if (h > sh) {
+            h = sh;
+            w = (int) Math.round(sh * target);
         }
-        int x = (w - cw) / 2;
-        int y = (h - ch) / 2;
+        return new Rectangle((sw - w) / 2, (int) Math.round((sh - h) * TOP_BIAS), w, h);
+    }
 
-        BufferedImage out = new BufferedImage(CELL_W, CELL_H, BufferedImage.TYPE_INT_RGB);
+    /** Crop (lihat {@link #cropRect}) lalu scale ke ukuran sel; filter berjalan pada gambar sebesar ini. */
+    public static BufferedImage fitCell(BufferedImage src, Rect cell) {
+        if (src.getWidth() == cell.w() && src.getHeight() == cell.h()) return src;
+        Rectangle r = cropRect(src.getWidth(), src.getHeight(), cell.w(), cell.h());
+        BufferedImage out = new BufferedImage(cell.w(), cell.h(), BufferedImage.TYPE_INT_RGB);
         Graphics2D g = out.createGraphics();
         try {
             g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
             g.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
-            g.drawImage(src, 0, 0, CELL_W, CELL_H, x, y, x + cw, y + ch, null);
+            g.drawImage(src, 0, 0, cell.w(), cell.h(), r.x, r.y, r.x + r.width, r.y + r.height, null);
         } finally {
             g.dispose();
         }
@@ -135,9 +118,7 @@ public class BrandedStripTemplate implements StripTemplate {
     @Override
     public BufferedImage applyTemplate(ArrayList<BufferedImage> images) {
         List<BufferedImage> frames = images == null ? List.of() : images;
-        int width = width();
-        int height = height();
-        BufferedImage strip = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+        BufferedImage strip = new BufferedImage(width(), height(), BufferedImage.TYPE_INT_RGB);
         Graphics2D g = strip.createGraphics();
         try {
             g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
@@ -145,58 +126,134 @@ public class BrandedStripTemplate implements StripTemplate {
             g.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS, RenderingHints.VALUE_FRACTIONALMETRICS_ON);
             g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
             g.setColor(PAPER);
-            g.fillRect(0, 0, width, height);
+            g.fillRect(0, 0, width(), height());
 
-            for (int i = 0; i < layout.photos(); i++) {
-                int x = PAD;
-                int y = PAD;
-                if (layout.orientation() == StripLayout.Orientation.VERTICAL) {
-                    y += i * (CELL_H + GAP);
-                } else {
-                    x += i * (CELL_W + GAP);
-                }
-                RoundRectangle2D cell = new RoundRectangle2D.Float(x, y, CELL_W, CELL_H, 2 * CELL_RADIUS, 2 * CELL_RADIUS);
+            List<Rect> cells = layout.cells();
+            for (int i = 0; i < cells.size(); i++) {
+                Rect c = cells.get(i);
+                RoundRectangle2D shape = new RoundRectangle2D.Float(c.x(), c.y(), c.w(), c.h(),
+                        2 * CELL_RADIUS, 2 * CELL_RADIUS);
                 BufferedImage frame = i < frames.size() ? frames.get(i) : null;
                 if (frame == null) {
                     g.setPaint(TINT);
                 } else {
-                    g.setPaint(new TexturePaint(fitCell(frame), new Rectangle(x, y, CELL_W, CELL_H)));
+                    g.setPaint(new TexturePaint(fitCell(frame, c), new Rectangle(c.x(), c.y(), c.w(), c.h())));
                 }
-                g.fill(cell);
+                g.fill(shape);
             }
-
-            int photosBottom = height - PAD_BOTTOM - footerHeight();
-            drawFooter(g, width, photosBottom + FOOTER_TOP);
+            drawFooter(g);
         } finally {
             g.dispose();
         }
         return strip;
     }
 
-    private void drawFooter(Graphics2D g, int width, int top) {
-        FontRenderContext frc = g.getFontRenderContext();
+    // ------------------------------------------------------------------ footer
 
-        AttributedString mark = new AttributedString(WORDMARK);
-        mark.addAttribute(TextAttribute.FONT, BrandFonts.serif(WORDMARK_SIZE));
+    private void drawFooter(Graphics2D g) {
+        FontRenderContext frc = g.getFontRenderContext();
+        Rect f = layout.footer();
+        int markSize = layout.wordmarkSize();
+        int capSize = layout.captionSize();
+        switch (layout.footerStyle()) {
+            case CENTER -> drawCenter(g, frc, f, markSize, capSize);
+            case SPLIT -> drawSplit(g, frc, f, markSize, capSize);
+            case SIDE -> drawSide(g, frc, f, markSize, capSize);
+        }
+    }
+
+    private void drawCenter(Graphics2D g, FontRenderContext frc, Rect f, int markSize, int capSize) {
+        double maxW = f.w() * 0.84;
+        TextLayout mark = wordmark(WORDMARK, markSize, maxW, frc);
+        boolean hasCaption = !caption.isEmpty();
+        TextLayout cap = hasCaption ? captionLayout(caption, capSize, maxW, frc) : null;
+        double markLine = markSize * LINE;
+        double capLine = hasCaption ? capSize * LINE : 0;
+        double gap = hasCaption ? capSize * 0.3 : 0;
+        double top = f.y() + (f.h() - (markLine + gap + capLine)) / 2.0;
+        drawLine(g, mark, f.x() + (f.w() - mark.getAdvance()) / 2.0, top, markLine, INK);
+        if (cap != null) {
+            drawLine(g, cap, f.x() + (f.w() - cap.getAdvance()) / 2.0, top + markLine + gap, capLine, INK_2);
+        }
+    }
+
+    private void drawSplit(Graphics2D g, FontRenderContext frc, Rect f, int markSize, int capSize) {
+        int left = layout.cells().get(0).x();
+        int right = layout.cells().stream().mapToInt(Rect::right).max().orElse(width());
+        double midY = f.y() + f.h() / 2.0;
+        TextLayout mark = wordmark(WORDMARK, markSize, (right - left) * 0.5, frc);
+        drawLine(g, mark, left, midY - markSize * LINE / 2.0, markSize * LINE, INK);
+        if (!caption.isEmpty()) {
+            double room = (right - left) - mark.getAdvance() - 40;
+            TextLayout cap = captionLayout(caption, capSize, Math.max(120, room), frc);
+            drawLine(g, cap, right - cap.getAdvance(), midY - capSize * LINE / 2.0, capSize * LINE, INK_2);
+        }
+    }
+
+    private void drawSide(Graphics2D g, FontRenderContext frc, Rect f, int markSize, int capSize) {
+        String[] words = WORDMARK.split(" ");
+        List<String> capLines = new ArrayList<>();
+        if (!caption.isEmpty()) {
+            int dot = caption.lastIndexOf(" · ");
+            if (dot > 0) {
+                capLines.add(caption.substring(0, dot));
+                capLines.add(caption.substring(dot + 3));
+            } else {
+                capLines.add(caption);
+            }
+        }
+        double markLine = markSize * LINE * 0.92;
+        double capLine = capSize * LINE;
+        double gap = capLines.isEmpty() ? 0 : capSize * 0.9;
+        double total = words.length * markLine + gap + capLines.size() * capLine;
+        double top = f.y() + (f.h() - total) / 2.0;
+        double maxW = f.w() * 0.8;
+        for (String word : words) {
+            TextLayout t = wordmark(word, markSize, maxW, frc);
+            drawLine(g, t, f.x() + (f.w() - t.getAdvance()) / 2.0, top, markLine, INK);
+            top += markLine;
+        }
+        top += gap;
+        for (String line : capLines) {
+            TextLayout t = captionLayout(line, capSize, maxW, frc);
+            drawLine(g, t, f.x() + (f.w() - t.getAdvance()) / 2.0, top, capLine, INK_2);
+            top += capLine;
+        }
+    }
+
+    /** Menggambar teks pada kotak baris setinggi {@code line} yang dimulai di y = top. */
+    private static void drawLine(Graphics2D g, TextLayout t, double x, double top, double line, Color color) {
+        double baseline = top + (line + t.getAscent() - t.getDescent()) / 2.0;
+        g.setColor(color);
+        t.draw(g, (float) x, (float) baseline);
+    }
+
+    private static TextLayout wordmark(String text, int size, double maxWidth, FontRenderContext frc) {
+        TextLayout t = wordmarkAt(text, size, frc);
+        if (t.getAdvance() > maxWidth) {
+            t = wordmarkAt(text, Math.max(8, (int) Math.floor(size * maxWidth / t.getAdvance())), frc);
+        }
+        return t;
+    }
+
+    private static TextLayout wordmarkAt(String text, int size, FontRenderContext frc) {
+        AttributedString mark = new AttributedString(text);
+        mark.addAttribute(TextAttribute.FONT, BrandFonts.serif(size));
         mark.addAttribute(TextAttribute.FOREGROUND, INK);
         mark.addAttribute(TextAttribute.TRACKING, -0.02f);
-        int de = WORDMARK.indexOf("de");
-        mark.addAttribute(TextAttribute.FONT, BrandFonts.serifItalic(WORDMARK_SIZE), de, de + 2);
-        int oo = WORDMARK.indexOf("oo");
-        mark.addAttribute(TextAttribute.FOREGROUND, VERMILION, oo, oo + 2);
+        int de = text.indexOf("de");
+        if (de >= 0) mark.addAttribute(TextAttribute.FONT, BrandFonts.serifItalic(size), de, de + 2);
+        int oo = text.indexOf("oo");
+        if (oo >= 0) mark.addAttribute(TextAttribute.FOREGROUND, VERMILION, oo, oo + 2);
+        return new TextLayout(mark.getIterator(), frc);
+    }
 
-        TextLayout markLayout = new TextLayout(mark.getIterator(), frc);
-        float markBaseline = top + (WORDMARK_LINE + markLayout.getAscent() - markLayout.getDescent()) / 2f;
-        markLayout.draw(g, (width - markLayout.getAdvance()) / 2f, markBaseline);
-
-        if (!caption.isEmpty()) {
-            TextLayout captionLayout = new TextLayout(caption, BrandFonts.sans(CAPTION_SIZE), frc);
-            float captionTop = top + WORDMARK_LINE + CAPTION_GAP;
-            float captionBaseline = captionTop
-                    + (CAPTION_LINE + captionLayout.getAscent() - captionLayout.getDescent()) / 2f;
-            g.setColor(INK_2);
-            captionLayout.draw(g, (width - captionLayout.getAdvance()) / 2f, captionBaseline);
+    private static TextLayout captionLayout(String text, int size, double maxWidth, FontRenderContext frc) {
+        TextLayout t = new TextLayout(text, BrandFonts.sans(size), frc);
+        if (t.getAdvance() > maxWidth) {
+            t = new TextLayout(text, BrandFonts.sans(Math.max(8, (int) Math.floor(size * maxWidth / t.getAdvance()))), frc);
         }
+        return t;
     }
 
     @Override

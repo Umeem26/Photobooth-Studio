@@ -225,13 +225,13 @@ public class SessionManager {
             }
             FilterStrategy strategy = filter.strategy();
             ArrayList<BufferedImage> cells = new ArrayList<>();
-            for (byte[] jpeg : s.frames) {
-                BufferedImage decoded = decode(jpeg);
+            for (int i = 0; i < s.frames.length; i++) {
+                BufferedImage decoded = decode(s.frames[i]);
                 if (decoded == null) {
                     throw new IOException("Frame tersimpan tidak bisa dibaca");
                 }
-                // Scale dulu ke ukuran sel agar filter berjalan pada gambar kecil
-                cells.add(strategy.applyFilter(BrandedStripTemplate.fitCell(decoded)));
+                // Crop + scale ke ukuran sel dulu agar filter berjalan pada gambar sebesar sel
+                cells.add(strategy.applyFilter(BrandedStripTemplate.fitCell(decoded, s.layout.cells().get(i))));
             }
             StripTemplate template = templateFactory.createTemplate(s.layout.id(), caption());
             BufferedImage strip = template.applyTemplate(cells);
