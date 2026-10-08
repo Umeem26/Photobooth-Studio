@@ -6,7 +6,7 @@
 
     <groupId>id.vandebooth</groupId>
     <artifactId>vandebooth</artifactId>
-    <version>2.0.0</version>
+    <version>2.1.0</version>
     <name>Van de Booth</name>
     <description>Sidecar Java Van de Booth (komposisi strip, sesi, export) untuk UI Electron</description>
 
