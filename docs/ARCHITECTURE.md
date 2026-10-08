@@ -1,6 +1,6 @@
 # Van de Booth architecture
 
-Version 2.0.0. Everything runs on one Windows PC; nothing is uploaded to the internet.
+Version 2.1.0. Everything runs on one Windows PC; nothing is uploaded to the internet.
 
 ## Components
 
@@ -33,7 +33,7 @@ flowchart LR
 
 - **Electron** (`desktop/`): single instance, starts the sidecar on a random port with a random token, waits for `/health`, loads the built UI, allows the camera only for the app origin, and stops the sidecar on quit. `--kiosk` opens fullscreen without a menu; F11 toggles fullscreen. In the installed app the sidecar runs on the bundled jlink runtime; in development it uses the system Java.
 - **UI** (`ui/`): React 18, reducer-based state machine (`ui/src/state/machine.ts`), design tokens in `ui/src/styles/tokens.css`, all text in `ui/src/strings.ts`. The camera is read in the browser (`getUserMedia`); each photo is sent to the sidecar as a JPEG.
-- **Sidecar** (`src/main/java`): `com.sun.net.httpserver` bound to 127.0.0.1. Every request needs the `X-Booth-Token` header. Routes: `/health`, `/api/config`, `/api/layouts`, `/api/filters`, `/api/printers`, `/api/sessions/*` (frames, compose, export, payment, share, print), `/api/admin/*` (login, PIN, config, sessions, export-all, purge, status, print and share tests).
+- **Sidecar** (`src/main/java`): `com.sun.net.httpserver` bound to 127.0.0.1. Every request needs the `X-Booth-Token` header. Routes: `/health`, `/api/config`, `/api/layouts` (id, name, photos, paper, `canvas`, `cells`, `footer`), `/api/filters`, `/api/printers`, `/api/sessions/*` (frames, compose, export, payment, share, print), `/api/admin/*` (login, PIN, config, sessions, export-all, purge, status, print and share tests).
 - **ShareServer** (`share/`): a separate HTTP server on the LAN that serves only `/s/<token>` download pages with expiring links and rate limiting. The main API never leaves 127.0.0.1.
 
 ## Guest flow
@@ -67,6 +67,10 @@ classDiagram
   }
   class StripTemplate {
     <<interface>>
+  }
+  class StripLayout {
+    <<enum, layout data>>
+    +canvas, cells, footer, paper
   }
   class BrandedStripTemplate
   class TemplateVertical
@@ -120,6 +124,7 @@ classDiagram
   ConfigStore --> AppConfig
   TemplateFactory ..> StripTemplate
   StripTemplate <|.. BrandedStripTemplate
+  BrandedStripTemplate --> StripLayout
   StripTemplate <|.. TemplateVertical
   StripTemplate <|.. TemplateHorizontal
   BoothFilter ..> FilterStrategy
