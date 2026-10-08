@@ -2,6 +2,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { _electron as electron, expect, test } from '@playwright/test';
+import { TEST_FEED } from './feed';
 
 // Smoke test shell Electron: sidecar dijalankan oleh aplikasi, UI hasil build termuat,
 // kamera palsu diizinkan, dan sidecar ikut mati saat aplikasi ditutup.
@@ -14,6 +15,7 @@ test('Electron menjalankan sidecar, memuat UI, dan mematikan sidecar saat keluar
     env: {
       ...(baseEnv as Record<string, string>),
       VANDEBOOTH_FAKE_CAMERA: '1',
+      VANDEBOOTH_FAKE_VIDEO: TEST_FEED,
       // Folder output/config sementara, server berbagi hanya lokal (tanpa prompt firewall)
       JAVA_TOOL_OPTIONS: [
         `-Dvandebooth.output.dir=${outDir}`,

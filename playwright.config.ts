@@ -1,7 +1,9 @@
 import { defineConfig } from '@playwright/test';
+import { TEST_FEED } from './e2e/feed';
 
 // E2E: UI hasil build (vite preview) + sidecar Java sungguhan + kamera palsu Chromium.
-// Jalankan lewat `npm run e2e` (membangun jar dan ui/dist dulu).
+// Jalankan lewat `npm run e2e` (membangun jar dan ui/dist dulu). Proyek "packaged" menguji
+// aplikasi terpaket (desktop/release/win-unpacked, atau VANDEBOOTH_PACKAGED_EXE): `npm run e2e:packaged`.
 export default defineConfig({
   testDir: 'e2e',
   timeout: 180_000,
@@ -19,15 +21,20 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      testIgnore: /electron\.spec\.ts/,
+      testIgnore: /(electron|packaged)\.spec\.ts/,
       use: {
         browserName: 'chromium',
         launchOptions: {
-          args: ['--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream'],
+          args: [
+            '--use-fake-device-for-media-stream',
+            '--use-fake-ui-for-media-stream',
+            `--use-file-for-fake-video-capture=${TEST_FEED}`,
+          ],
         },
       },
     },
     { name: 'electron', testMatch: /electron\.spec\.ts/ },
+    { name: 'packaged', testMatch: /packaged\.spec\.ts/ },
   ],
   webServer: {
     command: 'npm run preview --workspace @vandebooth/ui',
