@@ -2,6 +2,16 @@
 
 All notable changes to Van de Booth. Dates are release dates (YYYY-MM-DD); versions follow [Semantic Versioning](https://semver.org/).
 
+## [2.1.1] - 2026-10-08
+
+### Added
+- Operator Mode > Photos > **Mirror photos** (config `photos.mirror`, default on). It applies to new photos; the live preview is always mirrored.
+
+### Changed
+- The window now shows the Van de Booth icon instead of the default Electron icon.
+- Saved photos are mirrored so they match the live preview (turn off with the new toggle).
+- The repository moved to `Umeem26/Van-de-Booth`; links and badges are updated.
+
 ## [2.1.0] - 2026-10-08
 
 ### Added

@@ -1,6 +1,6 @@
 # Van de Booth architecture
 
-Version 2.1.0. Everything runs on one Windows PC; nothing is uploaded to the internet.
+Version 2.1.1. Everything runs on one Windows PC; nothing is uploaded to the internet.
 
 ## Components
 
