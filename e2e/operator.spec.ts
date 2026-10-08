@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
 import { TEST_FEED } from './feed';
-import { expectScreen, injectEnv, settle, shot } from './helpers';
+import { expectScreen, injectEnv, settle, shot, waitForVideo } from './helpers';
 import { randomPin, startTestSidecar, type TestSidecar } from './sidecar';
 
 // Sidecar khusus dengan folder config baru: belum ada PIN (tidak ada PIN bawaan)
@@ -241,4 +241,82 @@ test('operator: "Layouts offered" membatasi kartu di Layout screen dan minimal s
   for (const id of ['vertical-3', 'horizontal-3', 'grid-4', 'grid-6']) await group.getByTestId(`offer-${id}`).click();
   await expect(group.locator('[aria-checked="true"]')).toHaveCount(6);
   await expect.poll(async () => (await (await api(page, 'GET', '/api/config')).json()).layoutsOffered.length).toBe(6);
+});
+
+/**
+ * Sisi matahari (putih krem) pada foto Review: dengan feed uji, preview dicermin menaruhnya di kiri,
+ * jadi foto yang dicermin juga di kiri, dan foto tanpa cermin di kanan.
+ */
+async function sunSide(page: Page): Promise<'left' | 'right'> {
+  return page.evaluate(async () => {
+    const img = document.querySelector('[data-testid="review-photo-1"] img') as HTMLImageElement;
+    await img.decode();
+    const bmp = { width: img.naturalWidth, height: img.naturalHeight };
+    const c = document.createElement('canvas');
+    c.width = bmp.width;
+    c.height = bmp.height;
+    const g = c.getContext('2d')!;
+    g.drawImage(img, 0, 0);
+    const bright = (fx: number) => g.getImageData(Math.round(bmp.width * fx), Math.round(bmp.height * 0.25), 1, 1).data[2];
+    return bright(0.13) > bright(0.87) ? 'left' : 'right';
+  });
+}
+
+/** Satu foto (Big Shot) lewat UI sungguhan, berhenti di Review. */
+async function shootBigShot(page: Page) {
+  await page.getByTestId('start').click();
+  await expectScreen(page, 'layout');
+  await page.getByTestId('layout-postcard-1').click();
+  await page.getByTestId('next').click();
+  await expectScreen(page, 'capture');
+  await waitForVideo(page);
+  await expectScreen(page, 'review');
+  await expect(page.locator('[data-testid="review-photo-1"] img')).toBeVisible();
+}
+
+async function toOperator(page: Page) {
+  await holdWordmark(page);
+  await typePin(page, PIN);
+  await expectScreen(page, 'operator');
+}
+
+test('operator: "Mirror photos" mengatur arah foto baru (preview tetap dicermin)', async ({ page }) => {
+  await injectEnv(page, sidecar);
+  await page.goto('/');
+  await expectScreen(page, 'attract');
+  await waitForVideo(page);
+
+  // Bawaan: aktif, foto sama dengan preview (matahari di kiri)
+  expect((await (await api(page, 'GET', '/api/config')).json()).mirrorPhotos).toBe(true);
+  await shootBigShot(page);
+  expect(await sunSide(page)).toBe('left');
+  await page.getByTestId('start-over').click();
+  await expectScreen(page, 'layout');
+  await page.keyboard.press('Escape');
+  await expectScreen(page, 'attract');
+
+  // Matikan: foto baru apa adanya dari kamera (matahari di kanan); preview tetap dicermin
+  await toOperator(page);
+  await page.getByTestId('menu-photos').click();
+  const toggle = page.getByTestId('mirror-toggle');
+  await expect(toggle).toHaveAttribute('aria-checked', 'true');
+  await toggle.click();
+  await expect(toggle).toHaveAttribute('aria-checked', 'false');
+  await expect.poll(async () => (await (await api(page, 'GET', '/api/config')).json()).mirrorPhotos).toBe(false);
+  await page.getByTestId('exit-operator').click();
+  await expectScreen(page, 'attract');
+  await expect(page.locator('video.mirrored')).toBeVisible();
+  await shootBigShot(page);
+  expect(await sunSide(page)).toBe('right');
+  await page.getByTestId('start-over').click();
+  await expectScreen(page, 'layout');
+  await page.keyboard.press('Escape');
+  await expectScreen(page, 'attract');
+
+  // Nyalakan lagi
+  await toOperator(page);
+  await page.getByTestId('menu-photos').click();
+  await toggle.click();
+  await expect(toggle).toHaveAttribute('aria-checked', 'true');
+  await expect.poll(async () => (await (await api(page, 'GET', '/api/config')).json()).mirrorPhotos).toBe(true);
 });
