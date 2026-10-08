@@ -124,7 +124,7 @@ Counted from the current code: 4 GoF patterns plus 2 common non-GoF patterns.
 | Suite | Tests | Command |
 |---|---|---|
 | JUnit 5, Java engine (headless) | 123 in 19 classes | `./mvnw verify` |
-| Vitest, UI state machine, layout geometry, strings, camera, API env | 49 | `npm test` |
+| Vitest, UI state machine, layout geometry, strings, camera, API env | 50 | `npm test` |
 | Node test, Electron sidecar launcher | 5 | `npm test` |
 | Playwright, Chromium full flows with a real sidecar (all 6 layouts) | 18 | `npm run e2e` |
 | Playwright, Electron dev shell and packaged app | 2 | `npm run e2e`, `npm run e2e:packaged` |
