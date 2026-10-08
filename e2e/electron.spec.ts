@@ -14,7 +14,13 @@ test('Electron menjalankan sidecar, memuat UI, dan mematikan sidecar saat keluar
     env: {
       ...(baseEnv as Record<string, string>),
       VANDEBOOTH_FAKE_CAMERA: '1',
-      JAVA_TOOL_OPTIONS: `-Dvandebooth.output.dir=${outDir}`,
+      // Folder output/config sementara, server berbagi hanya lokal (tanpa prompt firewall)
+      JAVA_TOOL_OPTIONS: [
+        `-Dvandebooth.output.dir=${outDir}`,
+        `-Dvandebooth.config.dir=${join(outDir, 'config')}`,
+        '-Dvandebooth.share.bindAddress=127.0.0.1',
+        '-Dvandebooth.share.port=0',
+      ].join(' '),
     },
   });
   let apiBase = '';

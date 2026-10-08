@@ -1,30 +1,22 @@
 import { existsSync } from 'node:fs';
-import { expect, test, type Page } from '@playwright/test';
-import { advance, expectScreen, injectEnv, shot, waitForVideo } from './helpers';
-
-// Durasi dari CaptureScreen (jam dipalsukan agar countdown deterministik)
-const FIRST_DELAY = 800;
-const BETWEEN = 1_000;
-const TICK = 1_000;
-
-/** Jam palsu dibekukan: timer hanya maju lewat advance(). */
-async function startFrozen(page: Page) {
-  await page.clock.install({ time: new Date('2026-10-12T10:00:00') });
-  await injectEnv(page);
-  await page.goto('/');
-  await page.clock.pauseAt(new Date('2026-10-12T10:00:01'));
-}
-
-/** Menjalankan satu foto: jeda, countdown 3-2-1, jepret, tunggu thumbnail. */
-async function shootOne(page: Page, delay: number, expectedLabel: string) {
-  await expect(page.getByTestId('photo-chip')).toContainText(expectedLabel);
-  await advance(page, delay);
-  await expect(page.getByTestId('countdown')).toHaveText('3');
-  await advance(page, 3 * TICK);
-  await expect(page.getByTestId('thumb')).toBeVisible();
-}
+import { expect, test } from '@playwright/test';
+import {
+  BETWEEN,
+  FIRST_DELAY,
+  TICK,
+  advance,
+  advanceUntilText,
+  expectScreen,
+  injectEnv,
+  shootOne,
+  shot,
+  startFrozen,
+  trackSession,
+  waitForVideo,
+} from './helpers';
 
 test('alur penuh Attract -> Result dengan kamera palsu dan sidecar sungguhan', async ({ page }) => {
+  const session = trackSession(page);
   await startFrozen(page);
 
   // 1. Attract
@@ -37,6 +29,7 @@ test('alur penuh Attract -> Result dengan kamera palsu dan sidecar sungguhan', a
   await page.getByTestId('start').click();
   await expectScreen(page, 'layout');
   await expect(page.getByTestId('layout-vertical-4')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByTestId('step-pill')).toHaveText(/^1Layout2Photos3Result$/); // pembayaran OFF: tanpa Pay
   await shot(page, '2-layout.png');
 
   // 3. Capture: 4 foto; screenshot saat foto 2 menghitung "3" dengan thumbnail foto 1
@@ -79,12 +72,29 @@ test('alur penuh Attract -> Result dengan kamera palsu dan sidecar sungguhan', a
   await expect(page.getByTestId('next')).toBeEnabled();
   await shot(page, '5-filter.png');
 
-  // 6. Result
+  // 6. Result lengkap: Print strip + kartu QR berbagi
   await page.getByTestId('next').click();
   await expectScreen(page, 'result');
   await expect(page.getByTestId('result-strip')).toBeVisible();
+  await expect(page.getByTestId('qr-card')).toBeVisible();
+  await expect(page.getByTestId('qr-card')).toContainText('Scan to download');
+  await expect(page.getByTestId('print')).toHaveText('Print strip');
   await expect(page.getByTestId('returning')).toHaveText('Returning to start in 45 seconds');
   await shot(page, '6-result.png');
+
+  // Link unduh di QR benar-benar melayani strip di jaringan lokal
+  const shareRes = await page.request.post(`${process.env.E2E_API}/api/sessions/${session()}/share`, {
+    headers: { 'X-Booth-Token': process.env.E2E_TOKEN! },
+  });
+  const shareUrl = (await shareRes.json()).url as string;
+  const sharePage = await page.request.get(shareUrl);
+  expect(await sharePage.text()).toContain('Download strip');
+
+  // Print: hitung mundur dijeda selama mencetak, lalu toast
+  await page.getByTestId('print').click();
+  await expect(page.getByTestId('print')).toHaveText('Printing…');
+  await advanceUntilText(page, 'toast', 'Sent to the printer');
+  await expect(page.getByTestId('print')).toHaveText('Print strip');
 
   // Save photos -> toast berisi path, file benar-benar ada
   await page.getByTestId('save').click();
@@ -93,6 +103,11 @@ test('alur penuh Attract -> Result dengan kamera palsu dan sidecar sungguhan', a
   const saved = (await toast.textContent())!.replace('Saved to ', '').trim();
   expect(saved).toContain(process.env.E2E_OUT!);
   expect(existsSync(saved)).toBe(true);
+
+  // Batas cetak (print.maxCopies = 2)
+  await page.getByTestId('print').click();
+  await advanceUntilText(page, 'print', 'Print limit reached');
+  await expect(page.getByTestId('print')).toBeDisabled();
 
   // 45 detik tanpa aksi -> kembali ke Attract
   await advance(page, 45_000, 1_000);
