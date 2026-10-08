@@ -3,6 +3,8 @@ export interface BoothConfig {
   'event.date': string;
   maxRetakes: number;
   photosPerLayout: Record<string, number>;
+  /** Id layout yang ditawarkan ke tamu (urutan tetap, minimal satu). */
+  layoutsOffered?: string[];
   countdownSeconds: number;
   pauseSeconds: number;
   payment: { enabled: boolean; price: number };
@@ -16,6 +18,14 @@ export interface Layout {
   description: string;
   photos: number;
   orientation: 'vertical' | 'horizontal';
+  /** Kertas asal layout: "2x6", "6x4", atau "4x6". */
+  paper: string;
+  /** Ukuran canvas hasil compose (px @300 DPI). */
+  canvas: { w: number; h: number };
+  /** Area footer (wordmark + caption) dalam px canvas. */
+  footer: { x: number; y: number; w: number; h: number; style: 'center' | 'split' | 'side' };
+  /** Sel foto dalam px canvas. */
+  cells: { x: number; y: number; w: number; h: number }[];
 }
 
 export interface FilterOption {

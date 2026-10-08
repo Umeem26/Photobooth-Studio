@@ -3,18 +3,11 @@ import { useBooth } from '../app/context';
 import { Button, Chip, Title, Wordmark } from '../components/ui';
 import { useIdle } from '../hooks/useIdle';
 import { useKeys } from '../hooks/useKeys';
+import { REVIEW_BUTTON_H, REVIEW_PAD, reviewCardPos, reviewGrid } from '../layout/fit';
 import { retakesLeft } from '../state/machine';
 import { strings } from '../strings';
 import { FlowSteps } from './FlowSteps';
 import { abandonToAttract } from './sessionActions';
-
-const AREA_LEFT = 110;
-const AREA_WIDTH = 1700;
-const AREA_TOP = 280;
-const AREA_HEIGHT = 620;
-const GAP = 40;
-const PAD = 22;
-const BUTTON_H = 96;
 
 export function ReviewScreen() {
   const booth = useBooth();
@@ -23,11 +16,7 @@ export function ReviewScreen() {
   const left = retakesLeft(state);
   const n = state.frames.length;
 
-  const cardW = (AREA_WIDTH - GAP * (n - 1)) / n;
-  const photoW = cardW - 2 * PAD;
-  const photoH = (photoW * 3) / 4;
-  const cardH = PAD + photoH + PAD + BUTTON_H + PAD;
-  const top = AREA_TOP + (AREA_HEIGHT - cardH) / 2;
+  const grid = reviewGrid(n);
 
   const accept = () => dispatch({ type: 'REVIEW_ACCEPTED' });
 
@@ -59,25 +48,28 @@ export function ReviewScreen() {
         <Title className="title-screen" lead={strings.review.titleLead} emphasis={strings.review.titleEmphasis} />
       </div>
 
-      {state.frames.map((url, i) => (
-        <div
-          key={i}
-          className="card"
-          style={{ left: AREA_LEFT + i * (cardW + GAP), top, width: cardW, height: cardH, padding: PAD - 3 }}
-          data-testid={`review-photo-${i + 1}`}
-        >
-          {url && <img className="photo" src={url} alt="" style={{ height: photoH }} />}
-          <Button
-            variant="outline"
-            onClick={() => dispatch({ type: 'RETAKE_REQUESTED', index: i + 1 })}
-            disabled={left === 0}
-            style={{ width: '100%', height: BUTTON_H, marginTop: PAD, fontSize: 32 }}
-            testId={`retake-${i + 1}`}
+      {state.frames.map((url, i) => {
+        const pos = reviewCardPos(grid, n, i);
+        return (
+          <div
+            key={i}
+            className="card"
+            style={{ ...pos, width: grid.cardW, height: grid.cardH, padding: REVIEW_PAD - 3 }}
+            data-testid={`review-photo-${i + 1}`}
           >
-            {strings.review.retake}
-          </Button>
-        </div>
-      ))}
+            {url && <img className="photo" src={url} alt="" style={{ height: grid.photoH }} />}
+            <Button
+              variant="outline"
+              onClick={() => dispatch({ type: 'RETAKE_REQUESTED', index: i + 1 })}
+              disabled={left === 0}
+              style={{ width: '100%', height: REVIEW_BUTTON_H, marginTop: REVIEW_PAD, fontSize: 32, padding: 0 }}
+              testId={`retake-${i + 1}`}
+            >
+              {strings.review.retake}
+            </Button>
+          </div>
+        );
+      })}
 
       <div className="abs" style={{ left: 110, top: 936 }}>
         <Button variant="ghost" onClick={startOver} disabled={busy} testId="start-over">

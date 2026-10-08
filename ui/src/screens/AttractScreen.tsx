@@ -4,6 +4,7 @@ import { LiveVideo } from '../components/LiveVideo';
 import { PinDialog } from '../components/PinDialog';
 import { Button, Chip, StripPreview, Title, Wordmark } from '../components/ui';
 import { useKeys } from '../hooks/useKeys';
+import { offeredLayouts } from '../state/machine';
 import { formatEventDateShort, strings } from '../strings';
 
 export const OPERATOR_HOLD_MS = 3_000;
@@ -42,7 +43,7 @@ export function AttractScreen() {
   }, []);
 
   const start = async () => {
-    const layoutId = state.layouts[0]?.id;
+    const layoutId = offeredLayouts(state)[0]?.id;
     if (!api || !layoutId || starting) return;
     setStarting(true);
     try {

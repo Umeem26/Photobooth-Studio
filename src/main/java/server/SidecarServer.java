@@ -368,6 +368,8 @@ public class SidecarServer {
         body.put("orientation", l.orientation().name().toLowerCase());
         body.put("paper", l.paper());
         body.put("canvas", Map.of("w", l.canvasWidth(), "h", l.canvasHeight()));
+        body.put("footer", Map.of("x", l.footer().x(), "y", l.footer().y(), "w", l.footer().w(), "h", l.footer().h(),
+                "style", l.footerStyle().name().toLowerCase()));
         body.put("cells", l.cells().stream()
                 .map(c -> Map.of("x", c.x(), "y", c.y(), "w", c.w(), "h", c.h())).toList());
         return body;

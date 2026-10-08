@@ -1,12 +1,15 @@
 import { useEffect, useState } from 'react';
 import { useBooth } from '../app/context';
 import type { ShareLink } from '../api/types';
+import { StripImage } from '../components/StripImage';
 import { Button, QrImage, Title, Wordmark } from '../components/ui';
 import { useKeys } from '../hooks/useKeys';
 import { printLimitReached } from '../state/machine';
 import { strings } from '../strings';
 
 const PRINT_POLL_MS = 1_000;
+/** Wadah strip tetap (kiri); strip miring -3,5 derajat dan dimuat contain untuk semua rasio canvas. */
+export const STRIP_BOX = { left: 40, top: 57, width: 820, height: 930, tilt: -3.5 };
 
 /** Layar hasil (mockup 4): Print strip, Save photos, Retake, kartu QR, hitung mundur 45 detik. */
 export function ResultScreen() {
@@ -16,6 +19,7 @@ export function ResultScreen() {
   const [shareOff, setShareOff] = useState(!state.config?.share.enabled);
   const sessionId = state.sessionId;
   const limit = printLimitReached(state);
+  const layout = state.layouts.find((l) => l.id === state.layoutId);
 
   // Hitung mundur kembali ke Attract (reducer menjedanya selama mencetak)
   useEffect(() => {
@@ -104,10 +108,11 @@ export function ResultScreen() {
   return (
     <>
       <div className="abs" style={{ left: -120, top: 120, width: 960, height: 960, borderRadius: '50%', background: 'var(--butter)' }} />
-      <div className="abs" style={{ left: 10, top: 57, width: 640, height: 930, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div className="abs" data-testid="result-frame"
+        style={{ left: STRIP_BOX.left, top: STRIP_BOX.top, width: STRIP_BOX.width, height: STRIP_BOX.height, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         {state.stripUrl && (
-          <img className="strip-image" src={state.stripUrl} alt="" data-testid="result-strip"
-            style={{ maxWidth: 640, maxHeight: 930, objectFit: 'contain', transform: 'rotate(-3.5deg)' }} />
+          <StripImage src={state.stripUrl} layout={layout} testId="result-strip" rotate={STRIP_BOX.tilt}
+            boxW={STRIP_BOX.width} boxH={STRIP_BOX.height} />
         )}
       </div>
 

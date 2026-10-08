@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useBooth } from '../app/context';
 import { ApiError, type BoothApi } from '../api/client';
-import type { AdminConfig, AdminStatus, Printer, SessionSummary, ShareLink } from '../api/types';
+import type { AdminConfig, AdminStatus, Layout, Printer, SessionSummary, ShareLink } from '../api/types';
 import { Button, QrImage, Segmented, Toggle, Wordmark } from '../components/ui';
 import { useIdle } from '../hooks/useIdle';
 import { strings } from '../strings';
@@ -89,7 +89,30 @@ const num = (v: string | undefined, d: number) => (v === undefined || v === '' ?
 
 // ---------------------------------------------------------------- panel
 
-function EventPanel({ config, save }: { config: AdminConfig; save: Save }) {
+function LayoutsOffered({ config, layouts, save }: { config: AdminConfig; layouts: Layout[]; save: Save }) {
+  const raw = config['layouts.offered'] ?? '';
+  const on = raw ? raw.split(',') : layouts.map((l) => l.id);
+  const toggle = (id: string) => {
+    const next = on.includes(id) ? on.filter((x) => x !== id) : [...on, id];
+    if (next.length === 0) return; // minimal satu layout tetap aktif
+    save({ 'layouts.offered': layouts.filter((l) => next.includes(l.id)).map((l) => l.id).join(',') });
+  };
+  return (
+    <div className="op-checks" role="group" aria-label={t.event.layouts} data-testid="layouts-offered">
+      {layouts.map((l) => {
+        const checked = on.includes(l.id);
+        return (
+          <button key={l.id} type="button" role="checkbox" aria-checked={checked} className="op-check"
+            disabled={checked && on.length === 1} onClick={() => toggle(l.id)} data-testid={`offer-${l.id}`}>
+            {strings.layout.cards[l.id]?.name ?? l.name}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function EventPanel({ config, save, layouts }: { config: AdminConfig; save: Save; layouts: Layout[] }) {
   return (
     <>
       <Row label={t.event.name} hint={t.event.nameHint}>
@@ -99,6 +122,9 @@ function EventPanel({ config, save }: { config: AdminConfig; save: Save }) {
       <Row label={t.event.date} hint={t.event.dateHint}>
         <TextField type="date" value={config['event.date'] ?? ''} label={t.event.date} testId="event-date"
           onSave={(v) => save({ 'event.date': v })} />
+      </Row>
+      <Row label={t.event.layouts} hint={t.event.layoutsHint}>
+        <LayoutsOffered config={config} layouts={layouts} save={save} />
       </Row>
     </>
   );
@@ -461,7 +487,7 @@ export function OperatorScreen() {
       <section className="op-card" data-testid={`panel-${panel}`}>
         {config ? (
           <>
-            {panel === 'event' && <EventPanel config={config} save={save} />}
+            {panel === 'event' && <EventPanel config={config} save={save} layouts={state.layouts} />}
             {panel === 'photos' && <PhotosPanel config={config} save={save} />}
             {panel === 'payment' && <PaymentPanel config={config} save={save} />}
             {panel === 'sharing' && <SharingPanel config={config} save={save} admin={admin} />}

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useBooth } from '../app/context';
+import { StripImage } from '../components/StripImage';
 import { Button, SelectableCard, Title, Wordmark } from '../components/ui';
 import { useIdle } from '../hooks/useIdle';
 import { useKeys } from '../hooks/useKeys';
@@ -23,6 +24,8 @@ const CARD_H = 290;
 const CARDS_LEFT = 1810 - (2 * 430 + 40); // rata kanan dengan margin 110
 const CARDS_TOP = 280;
 const GAP = 40;
+/** Wadah pratinjau tetap 760x620; gambar contain dengan jarak 14 px dari tepi. */
+export const PREVIEW_BOX = { left: 110, top: 280, width: 760, height: 620, pad: 14 };
 
 export function FilterScreen() {
   const booth = useBooth();
@@ -73,6 +76,7 @@ export function FilterScreen() {
   useIdle(() => abandonToAttract(booth));
 
   const firstFrame = state.frames[0];
+  const layout = state.layouts.find((l) => l.id === state.layoutId);
 
   return (
     <>
@@ -84,13 +88,13 @@ export function FilterScreen() {
         <Title className="title-screen" lead={strings.filter.titleLead} emphasis={strings.filter.titleEmphasis} />
       </div>
 
-      <div className="abs card-preview" style={{ left: 110, top: 280, width: 760, height: 620, margin: 0, overflow: 'hidden' }}
-        data-testid="filter-strip">
+      <div className="abs card-preview" data-testid="filter-strip"
+        style={{ left: PREVIEW_BOX.left, top: PREVIEW_BOX.top, width: PREVIEW_BOX.width, height: PREVIEW_BOX.height, margin: 0, overflow: 'hidden' }}>
         {skeleton || !state.stripUrl ? (
           <div className="skeleton" style={{ width: 300, height: 540 }} data-testid="skeleton" />
         ) : (
-          <img className="strip-image" src={state.stripUrl} alt=""
-            style={{ maxWidth: 700, maxHeight: 560, objectFit: 'contain' }} />
+          <StripImage src={state.stripUrl} layout={layout} testId="filter-strip-image"
+            boxW={PREVIEW_BOX.width - 2 * PREVIEW_BOX.pad} boxH={PREVIEW_BOX.height - 2 * PREVIEW_BOX.pad} />
         )}
       </div>
 

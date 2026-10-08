@@ -108,6 +108,10 @@ img { display: block; }
 }
 .card-body { padding: 26px 36px; }
 
+/* ---------- Kartu layout (Layout screen) ---------- */
+.layout-mini { width: 232px; height: 100%; flex: none; display: flex; align-items: center; justify-content: center; margin-left: 12px; }
+.layout-text { flex: 1; min-width: 0; padding: 0 22px 0 8px; }
+
 /* ---------- StripPreview ---------- */
 .strip { background: var(--strip-white); box-shadow: var(--shadow-strip); display: inline-block; }
 .strip-cells { display: flex; flex-direction: column; }
@@ -185,6 +189,15 @@ img { display: block; }
 .label-caps { font-size: 30px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-2); }
 
 /* ---------- Mode Operator (kontrol >= 72 px) ---------- */
+.op-checks { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; flex: none; padding: 18px 0; }
+.op-check {
+  display: inline-flex; align-items: center; justify-content: center; gap: 12px;
+  height: 72px; min-width: 230px; padding: 0 22px; border-radius: var(--r-pill);
+  border: 3px solid var(--line); background: var(--paper); color: var(--ink);
+  font-weight: 700; font-size: 25px; white-space: nowrap;
+}
+.op-check[aria-checked='true'] { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+.op-check:disabled { opacity: 0.6; cursor: default; }
 .op-sidebar {
   position: absolute; left: 0; top: 0; width: 430px; height: 1080px;
   background: var(--paper); border-right: 3px solid var(--line); padding: 70px 40px;

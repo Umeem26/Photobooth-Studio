@@ -45,10 +45,15 @@ export const strings = {
     back: 'Back',
     next: 'Next',
     cards: {
-      'vertical-4': { name: 'Vertical, 4 photos', description: 'The classic booth look.' },
-      'vertical-3': { name: 'Vertical, 3 photos', description: 'Roomier, great for one hero pose.' },
-      'horizontal-3': { name: 'Horizontal, 3 photos', description: 'Wide, made for framing or display.' },
+      'vertical-4': { name: 'Classic Strip', description: 'The classic booth look.' },
+      'vertical-3': { name: 'Tall Strip', description: 'Roomier, with a bigger signature.' },
+      'horizontal-3': { name: 'Wide', description: 'One hero shot and two close-ups.' },
+      'postcard-1': { name: 'Big Shot', description: 'One big photo, for groups and outfits.' },
+      'grid-4': { name: 'Four Square', description: 'Four poses in a tidy grid.' },
+      'grid-6': { name: 'Contact Sheet', description: 'Six quick shots on one sheet.' },
     } as Record<string, { name: string; description: string }>,
+    /** "4 photos · 2×6" */
+    meta: (photos: number, paper: string) => `${photos} ${photos === 1 ? 'photo' : 'photos'} · ${String(paper).replace('x', '×')}`,
   },
 
   capture: {
@@ -145,6 +150,8 @@ export const strings = {
       nameHint: 'Shown on the welcome screen and under every strip.',
       date: 'Event date',
       dateHint: 'Printed in the strip footer. Leave empty to use today.',
+      layouts: 'Layouts offered',
+      layoutsHint: 'Guests choose from these.',
     },
     photos: {
       retakes: 'Retakes per session',
@@ -182,7 +189,7 @@ export const strings = {
       copies: 'Copies per guest',
       copiesHint: 'The print button stops after this many copies.',
       layout: 'Paper layout',
-      layoutHint: 'Two-up puts two strips on one sheet to cut.',
+      layoutHint: 'Two-up puts two strips on one sheet to cut. Strips only: other layouts print single.',
       single: 'Single',
       twoUp: 'Two-up',
       test: 'Print test page',

@@ -96,6 +96,14 @@ export const initialState: State = {
   toast: null,
 };
 
+/** Layout yang ditawarkan ke tamu (Mode Operator > "Layouts offered"); tanpa daftar = semua. */
+export function offeredLayouts(state: Pick<State, 'layouts' | 'config'>): Layout[] {
+  const ids = state.config?.layoutsOffered;
+  if (!ids || ids.length === 0) return state.layouts;
+  const offered = state.layouts.filter((l) => ids.includes(l.id));
+  return offered.length > 0 ? offered : state.layouts;
+}
+
 export function photosFor(state: Pick<State, 'layouts'>, layoutId: string | null): number {
   return state.layouts.find((l) => l.id === layoutId)?.photos ?? 0;
 }
@@ -157,7 +165,7 @@ export function reducer(state: State, action: Action): State {
         config: action.config,
         layouts: action.layouts,
         filters: action.filters,
-        layoutId: action.layouts[0]?.id ?? null,
+        layoutId: offeredLayouts({ layouts: action.layouts, config: action.config })[0]?.id ?? null,
       };
 
     case 'CONFIG_UPDATED':
@@ -177,11 +185,11 @@ export function reducer(state: State, action: Action): State {
         screen: 'layout',
         sessionId: action.sessionId,
         sessionLayoutId: action.layoutId,
-        layoutId: state.screen === 'attract' ? (state.layouts[0]?.id ?? null) : state.layoutId,
+        layoutId: state.screen === 'attract' ? (offeredLayouts(state)[0]?.id ?? null) : state.layoutId,
       };
 
     case 'LAYOUT_SELECTED':
-      if (state.screen !== 'layout' || !state.layouts.some((l) => l.id === action.layoutId)) return state;
+      if (state.screen !== 'layout' || !offeredLayouts(state).some((l) => l.id === action.layoutId)) return state;
       return { ...state, layoutId: action.layoutId };
 
     case 'LAYOUT_CONFIRMED':
@@ -255,11 +263,11 @@ export function reducer(state: State, action: Action): State {
 
     case 'OPERATOR_CLOSED':
       return state.screen === 'operator'
-        ? { ...state, screen: 'attract', adminToken: null, layoutId: state.layouts[0]?.id ?? null }
+        ? { ...state, screen: 'attract', adminToken: null, layoutId: offeredLayouts(state)[0]?.id ?? null }
         : state;
 
     case 'BACK_TO_ATTRACT':
-      return { ...clearSession(state), screen: 'attract', layoutId: state.layouts[0]?.id ?? null };
+      return { ...clearSession(state), screen: 'attract', layoutId: offeredLayouts(state)[0]?.id ?? null };
 
     case 'TOAST':
       return { ...state, toast: action.message };

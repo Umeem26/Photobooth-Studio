@@ -51,7 +51,24 @@ describe('strings', () => {
     expect(strings.result.returning(45)).toBe('Returning to start in 45 seconds');
     expect(strings.result.returning(1)).toBe('Returning to start in 1 second');
     expect(strings.result.saved('C:/x.png')).toBe('Saved to C:/x.png');
-    expect(Object.keys(strings.layout.cards)).toEqual(['vertical-4', 'vertical-3', 'horizontal-3']);
+    expect(Object.keys(strings.layout.cards)).toEqual([
+      'vertical-4',
+      'vertical-3',
+      'horizontal-3',
+      'postcard-1',
+      'grid-4',
+      'grid-6',
+    ]);
+    expect(Object.values(strings.layout.cards).map((c) => c.name)).toEqual([
+      'Classic Strip',
+      'Tall Strip',
+      'Wide',
+      'Big Shot',
+      'Four Square',
+      'Contact Sheet',
+    ]);
+    expect(strings.layout.meta(4, '2x6')).toBe('4 photos · 2×6');
+    expect(strings.layout.meta(1, '6x4')).toBe('1 photo · 6×4');
     expect(Object.keys(strings.filter.names)).toEqual(['original', 'mono', 'vintage', 'warm']);
   });
 

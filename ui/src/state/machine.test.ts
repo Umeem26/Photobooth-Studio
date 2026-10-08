@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   RESULT_TIMEOUT_S,
   initialState,
+  offeredLayouts,
   printLimitReached,
   reducer,
   retakesLeft,
@@ -16,7 +17,8 @@ const config: BoothConfig = {
   'event.name': 'Sample event',
   'event.date': '2026-10-12',
   maxRetakes: 2,
-  photosPerLayout: { 'vertical-4': 4, 'vertical-3': 3, 'horizontal-3': 3 },
+  photosPerLayout: { 'vertical-4': 4, 'vertical-3': 3, 'horizontal-3': 3, 'postcard-1': 1, 'grid-4': 4, 'grid-6': 6 },
+  layoutsOffered: ['vertical-4', 'vertical-3', 'horizontal-3', 'postcard-1', 'grid-4', 'grid-6'],
   countdownSeconds: 3,
   pauseSeconds: 1,
   payment: { enabled: false, price: 25000 },
@@ -24,10 +26,25 @@ const config: BoothConfig = {
   print: { maxCopies: 2 },
 };
 const paidConfig: BoothConfig = { ...config, payment: { enabled: true, price: 25000 } };
+const cell = { x: 0, y: 0, w: 10, h: 10 };
+const mk = (id: string, photos: number, orientation: Layout['orientation'], paper: string): Layout => ({
+  id,
+  name: id,
+  description: '',
+  photos,
+  orientation,
+  paper,
+  canvas: orientation === 'vertical' ? { w: 600, h: 1800 } : { w: 1800, h: 1200 },
+  footer: { x: 0, y: 0, w: 10, h: 10, style: 'center' },
+  cells: Array.from({ length: photos }, () => cell),
+});
 const layouts: Layout[] = [
-  { id: 'vertical-4', name: 'Vertical, 4 photos', description: '', photos: 4, orientation: 'vertical' },
-  { id: 'vertical-3', name: 'Vertical, 3 photos', description: '', photos: 3, orientation: 'vertical' },
-  { id: 'horizontal-3', name: 'Horizontal, 3 photos', description: '', photos: 3, orientation: 'horizontal' },
+  mk('vertical-4', 4, 'vertical', '2x6'),
+  mk('vertical-3', 3, 'vertical', '2x6'),
+  mk('horizontal-3', 3, 'horizontal', '6x4'),
+  mk('postcard-1', 1, 'horizontal', '6x4'),
+  mk('grid-4', 4, 'horizontal', '6x4'),
+  mk('grid-6', 6, 'vertical', '4x6'),
 ];
 const filters = [
   { id: 'original', name: 'Original' },
@@ -92,6 +109,45 @@ describe('reducer', () => {
     expect(s.queue).toEqual([1, 2, 3]);
     expect(s.sessionId).toBe('s2');
     expect(s.sessionLayoutId).toBe('horizontal-3');
+  });
+
+  it.each([
+    ['postcard-1', 1],
+    ['vertical-3', 3],
+    ['vertical-4', 4],
+    ['grid-6', 6],
+  ])('captures %s with %i photo(s) and reviews them', (layoutId, n) => {
+    const s = toReview(layoutId);
+    expect(s.screen).toBe('review');
+    expect(s.frames).toHaveLength(n);
+    expect(s.frames.every((f) => f !== null)).toBe(true);
+    expect(run(s, { type: 'RETAKE_REQUESTED', index: n }).queue).toEqual([n]);
+    expect(run(s, { type: 'RETAKE_REQUESTED', index: n + 1 }).screen).toBe('review');
+  });
+
+  it('retake limit stays total per session for 1..6 photos', () => {
+    let s = toReview('grid-6');
+    for (const index of [1, 6]) {
+      s = captureAll(run(s, { type: 'RETAKE_REQUESTED', index }));
+    }
+    expect(retakesLeft(s)).toBe(0);
+    expect(run(s, { type: 'RETAKE_REQUESTED', index: 3 }).screen).toBe('review');
+  });
+
+  it('only offers the layouts the operator ticked, and selects the first one', () => {
+    const some = { ...config, layoutsOffered: ['grid-6', 'postcard-1'] };
+    expect(offeredLayouts({ layouts, config: some }).map((l) => l.id)).toEqual(['postcard-1', 'grid-6']);
+    expect(offeredLayouts({ layouts, config: { ...config, layoutsOffered: undefined } })).toHaveLength(6);
+    expect(offeredLayouts({ layouts, config: { ...config, layoutsOffered: ['nope'] } })).toHaveLength(6);
+
+    const s = run(initialState, { type: 'BOOTED', config: some, layouts, filters });
+    expect(s.layoutId).toBe('postcard-1');
+    const started = run(s, { type: 'SESSION_STARTED', sessionId: 's1', layoutId: 'postcard-1' });
+    expect(started.layoutId).toBe('postcard-1');
+    expect(run(started, { type: 'LAYOUT_SELECTED', layoutId: 'vertical-4' }).layoutId).toBe('postcard-1');
+    expect(run(started, { type: 'LAYOUT_SELECTED', layoutId: 'grid-6' }).layoutId).toBe('grid-6');
+    const one = run(initialState, { type: 'BOOTED', config: { ...config, layoutsOffered: ['grid-4'] }, layouts, filters });
+    expect(one.layoutId).toBe('grid-4');
   });
 
   it('ignores frames out of order and unknown layouts', () => {

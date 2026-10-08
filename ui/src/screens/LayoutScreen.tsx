@@ -1,32 +1,21 @@
 import { useState } from 'react';
 import { useBooth } from '../app/context';
-import type { Layout } from '../api/types';
-import { Button, SelectableCard, StripPreview, Title, Wordmark } from '../components/ui';
+import { LayoutMiniature } from '../components/LayoutMiniature';
+import { Button, SelectableCard, Title, Wordmark } from '../components/ui';
 import { useIdle } from '../hooks/useIdle';
 import { useKeys } from '../hooks/useKeys';
-import { formatEventDateShort, strings } from '../strings';
+import { LAYOUT_CARD, layoutCardPositions } from '../layout/fit';
+import { offeredLayouts } from '../state/machine';
+import { strings } from '../strings';
 import { FlowSteps } from './FlowSteps';
 import { abandonToAttract } from './sessionActions';
-
-function LayoutPreview({ layout, date }: { layout: Layout; date: string }) {
-  if (layout.orientation === 'horizontal') {
-    return (
-      <StripPreview photos={layout.photos} orientation="horizontal" cellW={124} cellH={150} gap={8}
-        padding="16px 16px 10px" wordmarkSize={22} captionSize={12} showFooter={false} />
-    );
-  }
-  const big = layout.photos <= 3;
-  return (
-    <StripPreview photos={layout.photos} orientation="vertical" cellW={big ? 150 : 112} cellH={big ? 110 : 82}
-      gap={8} padding="14px 14px 8px" wordmarkSize={22} caption={date} captionSize={12} />
-  );
-}
 
 export function LayoutScreen() {
   const booth = useBooth();
   const { state, dispatch, api, handleError } = booth;
   const [busy, setBusy] = useState(false);
-  const date = state.config ? formatEventDateShort(state.config['event.date']) : '';
+  const offered = offeredLayouts(state);
+  const positions = layoutCardPositions(offered.length);
 
   const back = () => abandonToAttract(booth);
 
@@ -62,22 +51,24 @@ export function LayoutScreen() {
         <Title className="title-screen" lead={strings.layout.titleLead} emphasis={strings.layout.titleEmphasis} />
       </div>
 
-      {state.layouts.map((layout, i) => {
+      {offered.map((layout, i) => {
         const copy = strings.layout.cards[layout.id] ?? { name: layout.name, description: layout.description };
         return (
           <SelectableCard
             key={layout.id}
             selected={state.layoutId === layout.id}
             onSelect={() => dispatch({ type: 'LAYOUT_SELECTED', layoutId: layout.id })}
-            style={{ left: 110 + i * 580, top: 280, width: 540, height: 620 }}
+            style={{ ...positions[i], width: LAYOUT_CARD.w, height: LAYOUT_CARD.h, flexDirection: 'row', alignItems: 'center' }}
             testId={`layout-${layout.id}`}
           >
-            <div className="card-preview">
-              <LayoutPreview layout={layout} date={date} />
+            <div className="layout-mini">
+              <LayoutMiniature layout={layout} maxW={200} maxH={252} />
             </div>
-            <div className="card-body">
-              <div className="card-title">{copy.name}</div>
-              <div className="card-desc">{copy.description}</div>
+            <div className="layout-text">
+              <div className="card-title" style={{ fontSize: 38 }}>{copy.name}</div>
+              <div className="card-desc" data-testid={`layout-meta-${layout.id}`}>
+                {strings.layout.meta(layout.photos, layout.paper)}
+              </div>
             </div>
           </SelectableCard>
         );
