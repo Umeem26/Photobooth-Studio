@@ -28,6 +28,9 @@ export function CaptureScreen() {
   // Dari Mode Operator: detik hitung mundur (2-5) dan jeda antar foto
   const countdownFrom = state.config?.countdownSeconds ?? 3;
   const betweenMs = (state.config?.pauseSeconds ?? 1) * 1_000;
+  // Foto baru dicermin atau tidak mengikuti Mode Operator; dibaca lewat ref agar hitung mundur tidak mulai ulang
+  const mirrorRef = useRef(true);
+  mirrorRef.current = state.config?.mirrorPhotos !== false;
 
   // Kamera bisa hilang di tengah sesi: minta ulang, gagal -> layar Error
   useEffect(() => {
@@ -68,7 +71,7 @@ export function CaptureScreen() {
 
       let blob: Blob;
       try {
-        blob = await captureFrame(videoRef.current);
+        blob = await captureFrame(videoRef.current, mirrorRef.current);
         await api.putFrame(sessionId, current, blob);
       } catch (e) {
         if (!cancelled) {

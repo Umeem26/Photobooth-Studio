@@ -34,4 +34,17 @@ describe('captureFrame', () => {
     expect(canvas.width).toBe(1440);
     expect(calls).toEqual(['translate(1440,0)', 'scale(-1,1)', 'drawImage']);
   });
+
+  it('keeps the camera orientation when mirroring is off', async () => {
+    const calls: string[] = [];
+    const ctx = {
+      translate: () => calls.push('translate'),
+      scale: () => calls.push('scale'),
+      drawImage: () => calls.push('drawImage'),
+    };
+    const canvas = { width: 0, height: 0, getContext: () => ctx, toBlob: (cb: (b: Blob | null) => void) => cb(new Blob(['x'])) };
+    vi.stubGlobal('document', { createElement: () => canvas });
+    await captureFrame({ videoWidth: 640, videoHeight: 480 } as HTMLVideoElement, false);
+    expect(calls).toEqual(['drawImage']);
+  });
 });

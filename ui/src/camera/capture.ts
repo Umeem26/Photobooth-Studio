@@ -13,10 +13,11 @@ export function centerCrop43(w: number, h: number): { sx: number; sy: number; sw
 export const JPEG_QUALITY = 0.92;
 
 /**
- * Mengambil satu frame dari video: crop tengah 4:3, dicermin horizontal agar sama dengan
- * preview (yang dicermin lewat CSS), JPEG kualitas 0,92.
+ * Mengambil satu frame dari video: crop tengah 4:3, JPEG kualitas 0,92. Dengan `mirror`
+ * (bawaan, Mode Operator > Photos > Mirror photos) foto dicermin horizontal agar sama dengan
+ * preview, yang selalu dicermin lewat CSS.
  */
-export async function captureFrame(video: HTMLVideoElement): Promise<Blob> {
+export async function captureFrame(video: HTMLVideoElement, mirror = true): Promise<Blob> {
   const { sx, sy, sw, sh } = centerCrop43(video.videoWidth, video.videoHeight);
   if (sw === 0 || sh === 0) throw new Error('Video belum siap');
   const canvas = document.createElement('canvas');
@@ -24,8 +25,10 @@ export async function captureFrame(video: HTMLVideoElement): Promise<Blob> {
   canvas.height = sh;
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('Canvas 2D tidak tersedia');
-  ctx.translate(sw, 0);
-  ctx.scale(-1, 1); // sama dengan preview (.video.mirrored)
+  if (mirror) {
+    ctx.translate(sw, 0);
+    ctx.scale(-1, 1); // sama dengan preview (.video.mirrored)
+  }
   ctx.drawImage(video, sx, sy, sw, sh, 0, 0, sw, sh);
   return new Promise((resolve, reject) =>
     canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('Gagal membuat JPEG'))), 'image/jpeg', JPEG_QUALITY),

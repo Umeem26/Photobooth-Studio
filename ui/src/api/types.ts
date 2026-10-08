@@ -7,6 +7,8 @@ export interface BoothConfig {
   layoutsOffered?: string[];
   countdownSeconds: number;
   pauseSeconds: number;
+  /** Foto baru dicermin agar sama dengan preview (bawaan true). */
+  mirrorPhotos?: boolean;
   payment: { enabled: boolean; price: number };
   share: { enabled: boolean };
   print: { maxCopies: number };

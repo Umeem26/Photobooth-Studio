@@ -160,6 +160,8 @@ export const strings = {
       countdownHint: 'Seconds before each photo.',
       pause: 'Pause between photos',
       pauseHint: 'Seconds to get ready for the next pose.',
+      mirror: 'Mirror photos',
+      mirrorHint: 'Saved photos match the preview. Turn off to keep them as the camera sees them. Applies to new photos.',
       seconds: (n: number) => `${n} s`,
     },
     payment: {

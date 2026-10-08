@@ -153,6 +153,10 @@ function PhotosPanel({ config, save }: { config: AdminConfig; save: Save }) {
           options={[0, 1, 2, 3].map((n) => ({ value: n, label: t.photos.seconds(n) }))}
           onChange={(v) => save({ 'capture.pauseSeconds': String(v) })} />
       </Row>
+      <Row label={t.photos.mirror} hint={t.photos.mirrorHint}>
+        <Toggle on={config['photos.mirror'] !== 'false'} label={t.photos.mirror} testId="mirror-toggle"
+          onChange={(on) => save({ 'photos.mirror': String(on) })} />
+      </Row>
     </>
   );
 }
