@@ -57,6 +57,7 @@ test('alur penuh Attract -> Result dengan kamera palsu dan sidecar sungguhan', a
   // Retake foto 2 (kembali ke Capture hanya untuk foto itu)
   await page.getByTestId('retake-2').click();
   await expectScreen(page, 'capture');
+  await waitForVideo(page);
   await shootOne(page, FIRST_DELAY, 'Photo 2 of 4');
   await advance(page, BETWEEN);
   await expectScreen(page, 'review');
@@ -132,6 +133,7 @@ test('batas retake: setelah 2 retake tombol nonaktif dan muncul "No retakes left
   for (const idx of [1, 3]) {
     await page.getByTestId(`retake-${idx}`).click();
     await expectScreen(page, 'capture');
+    await waitForVideo(page);
     await shootOne(page, FIRST_DELAY, `Photo ${idx} of 3`);
     await advance(page, BETWEEN);
     await expectScreen(page, 'review');
