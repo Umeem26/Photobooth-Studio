@@ -44,6 +44,7 @@ public final class AppConfig {
     public static final String PRINT_PAPER_KEY = "print.paper";
     public static final String PRINT_MODE_KEY = "print.mode";
     public static final String LAYOUTS_OFFERED_KEY = "layouts.offered";
+    public static final String PHOTOS_MIRROR_KEY = "photos.mirror";
 
     public static final String SYSTEM_PROPERTY_PREFIX = "vandebooth.";
     public static final String OUTPUT_DIR_SYSTEM_PROPERTY = SYSTEM_PROPERTY_PREFIX + OUTPUT_DIR_KEY;
@@ -56,13 +57,14 @@ public final class AppConfig {
     public static final List<String> KEYS = List.of(OUTPUT_DIR_KEY, EVENT_NAME_KEY, EVENT_DATE_KEY, MAX_RETAKES_KEY,
             COUNTDOWN_SECONDS_KEY, PAUSE_SECONDS_KEY, PAYMENT_ENABLED_KEY, PAYMENT_PRICE_KEY, SHARE_ENABLED_KEY,
             SHARE_PORT_KEY, SHARE_HOST_KEY, SHARE_BIND_KEY, SHARE_EXPIRY_KEY, PRINT_PRINTER_KEY, PRINT_MAX_COPIES_KEY,
-            PRINT_LAYOUT_KEY, PRINT_PAPER_KEY, PRINT_MODE_KEY, LAYOUTS_OFFERED_KEY);
+            PRINT_LAYOUT_KEY, PRINT_PAPER_KEY, PRINT_MODE_KEY, LAYOUTS_OFFERED_KEY,
+            PHOTOS_MIRROR_KEY);
 
     /** Kunci yang boleh diubah lewat Mode Operator. */
     public static final Set<String> EDITABLE_KEYS = Set.of(EVENT_NAME_KEY, EVENT_DATE_KEY, MAX_RETAKES_KEY,
             COUNTDOWN_SECONDS_KEY, PAUSE_SECONDS_KEY, PAYMENT_ENABLED_KEY, PAYMENT_PRICE_KEY, SHARE_ENABLED_KEY,
             SHARE_PORT_KEY, SHARE_HOST_KEY, SHARE_EXPIRY_KEY, PRINT_PRINTER_KEY, PRINT_MAX_COPIES_KEY, PRINT_LAYOUT_KEY,
-            LAYOUTS_OFFERED_KEY);
+            LAYOUTS_OFFERED_KEY, PHOTOS_MIRROR_KEY);
 
     public static final Set<Integer> SHARE_EXPIRY_CHOICES = Set.of(1, 6, 24);
     private static final Pattern HOST = Pattern.compile("[A-Za-z0-9.\\-]{0,253}");
@@ -167,6 +169,7 @@ public final class AppConfig {
         oneOf(v, PRINT_PAPER_KEY, "4x6", Set.of("4x6"));
         oneOf(v, PRINT_MODE_KEY, "system", Set.of("system", "file"));
         v.setProperty(LAYOUTS_OFFERED_KEY, normalizeLayouts(str(v, LAYOUTS_OFFERED_KEY, "")));
+        bool(v, PHOTOS_MIRROR_KEY, true);
 
         return new AppConfig(v, expandHome(rawDir), date, clock);
     }
@@ -279,6 +282,9 @@ public final class AppConfig {
     public int countdownSeconds() { return integer(COUNTDOWN_SECONDS_KEY); }
 
     public int pauseSeconds() { return integer(PAUSE_SECONDS_KEY); }
+
+    /** Foto baru dicermin agar sama dengan preview (preview selalu dicermin). */
+    public boolean mirrorPhotos() { return Boolean.parseBoolean(values.getProperty(PHOTOS_MIRROR_KEY)); }
 
     // ------------------------------------------------------------------ pembayaran
 

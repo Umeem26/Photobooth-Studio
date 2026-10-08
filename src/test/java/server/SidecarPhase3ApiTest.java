@@ -124,6 +124,7 @@ class SidecarPhase3ApiTest {
         assertEquals(2, c.getAsJsonObject("print").get("maxCopies").getAsInt());
         assertEquals(3, c.get("countdownSeconds").getAsInt());
         assertEquals(1, c.get("pauseSeconds").getAsInt());
+        assertTrue(c.get("mirrorPhotos").getAsBoolean(), "foto dicermin secara bawaan");
     }
 
     @Test

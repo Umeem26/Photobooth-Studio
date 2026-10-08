@@ -337,6 +337,7 @@ public class SidecarServer {
         body.put("layoutsOffered", config.layoutsOffered());
         body.put("countdownSeconds", config.countdownSeconds());
         body.put("pauseSeconds", config.pauseSeconds());
+        body.put("mirrorPhotos", config.mirrorPhotos());
         body.put("payment", Map.of("enabled", config.paymentEnabled(), "price", config.paymentPrice()));
         body.put("share", Map.of("enabled", config.shareEnabled()));
         body.put("print", Map.of("maxCopies", config.printMaxCopies()));

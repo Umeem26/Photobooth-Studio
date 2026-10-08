@@ -40,6 +40,25 @@ class ConfigStoreTest {
     }
 
     @Test
+    void mirrorPhotosDefaultsToOnAndIsEditableAndValidated() throws Exception {
+        ConfigStore store = store();
+        assertTrue(store.current().mirrorPhotos());
+
+        AppConfig off = store.update(Map.of(AppConfig.PHOTOS_MIRROR_KEY, "false"));
+        assertFalse(off.mirrorPhotos());
+        Properties saved = new Properties();
+        try (InputStream in = Files.newInputStream(tmp.resolve("cfg").resolve("config.properties"))) {
+            saved.load(in);
+        }
+        assertEquals("false", saved.getProperty(AppConfig.PHOTOS_MIRROR_KEY));
+        assertTrue(store.update(Map.of(AppConfig.PHOTOS_MIRROR_KEY, "true")).mirrorPhotos());
+
+        assertThrows(IllegalArgumentException.class, () -> store.update(Map.of(AppConfig.PHOTOS_MIRROR_KEY, "maybe")));
+        assertTrue(store.current().mirrorPhotos(), "nilai salah tidak mengubah apa pun");
+        assertTrue(AppConfig.EDITABLE_KEYS.contains(AppConfig.PHOTOS_MIRROR_KEY));
+    }
+
+    @Test
     void layoutsOfferedDefaultsToAllSixAndPersistsValidatedSelection() throws Exception {
         ConfigStore store = store();
         assertEquals(List.of("vertical-4", "vertical-3", "horizontal-3", "postcard-1", "grid-4", "grid-6"),
