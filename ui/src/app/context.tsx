@@ -27,6 +27,28 @@ export function useBooth(): Booth {
   return ctx;
 }
 
+const CAMERA_STALL_MS = 5_000;
+
+/**
+ * getUserMedia yang tidak selesai dalam 5 detik diminta ulang sekali (permintaan pertama kadang
+ * menggantung di Electron). Stream dari permintaan lama yang datang terlambat langsung dihentikan.
+ */
+async function getUserMediaWithRetry(): Promise<MediaStream> {
+  const first = navigator.mediaDevices.getUserMedia(CAMERA_CONSTRAINTS);
+  const stalled = Symbol('stalled');
+  let timer: number | undefined;
+  const winner = await Promise.race([
+    first,
+    new Promise<typeof stalled>((resolve) => {
+      timer = window.setTimeout(() => resolve(stalled), CAMERA_STALL_MS);
+    }),
+  ]);
+  window.clearTimeout(timer);
+  if (winner !== stalled) return winner;
+  first.then((late) => late.getTracks().forEach((t) => t.stop())).catch(() => undefined);
+  return navigator.mediaDevices.getUserMedia(CAMERA_CONSTRAINTS);
+}
+
 export function useCameraStream(): Camera {
   const [stream, setStream] = useState<MediaStream | null>(null);
   const pending = useRef<Promise<boolean> | null>(null);
@@ -36,7 +58,7 @@ export function useCameraStream(): Camera {
     if (pending.current) return pending.current;
     pending.current = (async () => {
       try {
-        const s = await navigator.mediaDevices.getUserMedia(CAMERA_CONSTRAINTS);
+        const s = await getUserMediaWithRetry();
         s.getVideoTracks().forEach((t) => t.addEventListener('ended', () => setStream(null)));
         setStream(s);
         return true;

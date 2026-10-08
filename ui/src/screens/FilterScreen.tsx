@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useBooth } from '../app/context';
-import { Button, SelectableCard, StepPill, Title, Wordmark } from '../components/ui';
+import { Button, SelectableCard, Title, Wordmark } from '../components/ui';
 import { useIdle } from '../hooks/useIdle';
 import { useKeys } from '../hooks/useKeys';
 import { strings } from '../strings';
+import { FlowSteps } from './FlowSteps';
 import { abandonToAttract } from './sessionActions';
 
 const DEBOUNCE_MS = 150;
@@ -78,7 +79,7 @@ export function FilterScreen() {
       <div className="abs" style={{ left: 110, top: 70 }}>
         <Wordmark size={44} />
       </div>
-      <StepPill active={3} />
+      <FlowSteps screen="filter" />
       <div className="abs" style={{ left: 110, top: 150 }}>
         <Title className="title-screen" lead={strings.filter.titleLead} emphasis={strings.filter.titleEmphasis} />
       </div>

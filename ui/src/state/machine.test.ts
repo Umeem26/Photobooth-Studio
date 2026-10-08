@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { initialState, reducer, retakesLeft, stepFor, type Action, type State } from './machine';
+import {
+  RESULT_TIMEOUT_S,
+  initialState,
+  printLimitReached,
+  reducer,
+  retakesLeft,
+  stepFor,
+  stepsFor,
+  type Action,
+  type State,
+} from './machine';
 import type { BoothConfig, Layout } from '../api/types';
 
 const config: BoothConfig = {
@@ -7,7 +17,13 @@ const config: BoothConfig = {
   'event.date': '2026-10-12',
   maxRetakes: 2,
   photosPerLayout: { 'vertical-4': 4, 'vertical-3': 3, 'horizontal-3': 3 },
+  countdownSeconds: 3,
+  pauseSeconds: 1,
+  payment: { enabled: false, price: 25000 },
+  share: { enabled: true },
+  print: { maxCopies: 2 },
 };
+const paidConfig: BoothConfig = { ...config, payment: { enabled: true, price: 25000 } };
 const layouts: Layout[] = [
   { id: 'vertical-4', name: 'Vertical, 4 photos', description: '', photos: 4, orientation: 'vertical' },
   { id: 'vertical-3', name: 'Vertical, 3 photos', description: '', photos: 3, orientation: 'vertical' },
@@ -145,5 +161,84 @@ describe('reducer', () => {
     expect(stepFor('review')).toBe(2);
     expect(stepFor('filter')).toBe(3);
     expect(stepFor('attract')).toBeNull();
+  });
+
+  it('payment ON inserts the Pay screen between Layout and Capture', () => {
+    let s = run(
+      initialState,
+      { type: 'BOOTED', config: paidConfig, layouts, filters },
+      { type: 'SESSION_STARTED', sessionId: 's1', layoutId: 'vertical-4' },
+      { type: 'LAYOUT_CONFIRMED', sessionId: 's1', layoutId: 'vertical-4' },
+    );
+    expect(s.screen).toBe('pay');
+    expect(s.queue).toEqual([1, 2, 3, 4]);
+    expect(run(s, { type: 'BACK_TO_LAYOUT' }).screen).toBe('layout');
+    expect(run(s, { type: 'FRAME_CAPTURED', index: 1, url: 'x' }).frames[0]).toBeNull();
+    s = run(s, { type: 'PAYMENT_CONFIRMED' });
+    expect(s.screen).toBe('capture');
+    expect(stepFor('pay', true)).toBe(2);
+    expect(stepFor('capture', true)).toBe(3);
+    expect(stepFor('result', true)).toBe(4);
+    expect(stepsFor(true)).toEqual(['Layout', 'Pay', 'Photos', 'Result']);
+  });
+
+  it('payment OFF never visits Pay; Retake from Result with payment ON goes back to Pay', () => {
+    expect(run(toReview(), { type: 'PAYMENT_CONFIRMED' }).screen).toBe('review');
+    let s = run(
+      initialState,
+      { type: 'BOOTED', config: paidConfig, layouts, filters },
+      { type: 'SESSION_STARTED', sessionId: 's1', layoutId: 'vertical-3' },
+      { type: 'LAYOUT_SELECTED', layoutId: 'vertical-3' },
+      { type: 'LAYOUT_CONFIRMED', sessionId: 's1', layoutId: 'vertical-3' },
+      { type: 'PAYMENT_CONFIRMED' },
+    );
+    s = captureAll(s);
+    s = run(s, { type: 'REVIEW_ACCEPTED' }, { type: 'STRIP_COMPOSED', filterId: 'original', url: 'u' }, { type: 'FILTER_CONFIRMED' });
+    expect(s.screen).toBe('result');
+    expect(run(s, { type: 'RESTARTED_SAME_LAYOUT', sessionId: 's2' }).screen).toBe('pay');
+  });
+
+  it('result countdown returns to Attract and pauses while printing', () => {
+    let s = run(toReview(), { type: 'REVIEW_ACCEPTED' }, { type: 'STRIP_COMPOSED', filterId: 'original', url: 'u' });
+    s = run(s, { type: 'FILTER_CONFIRMED' });
+    expect(s.resultSecondsLeft).toBe(RESULT_TIMEOUT_S);
+    s = run(s, { type: 'RESULT_TICK' }, { type: 'RESULT_TICK' });
+    expect(s.resultSecondsLeft).toBe(RESULT_TIMEOUT_S - 2);
+
+    s = run(s, { type: 'PRINT_STARTED' });
+    expect(s.printing).toBe(true);
+    for (let i = 0; i < 100; i++) s = reducer(s, { type: 'RESULT_TICK' });
+    expect(s.screen).toBe('result');
+    expect(s.resultSecondsLeft).toBe(RESULT_TIMEOUT_S - 2);
+
+    s = run(s, { type: 'PRINT_FINISHED', ok: true });
+    expect(s.printing).toBe(false);
+    expect(s.printsUsed).toBe(1);
+    for (let i = 0; i < RESULT_TIMEOUT_S - 2; i++) s = reducer(s, { type: 'RESULT_TICK' });
+    expect(s.screen).toBe('attract');
+    expect(s.sessionId).toBeNull();
+  });
+
+  it('enforces the print limit and does not count failed prints', () => {
+    let s = run(toReview(), { type: 'REVIEW_ACCEPTED' }, { type: 'STRIP_COMPOSED', filterId: 'original', url: 'u' });
+    s = run(s, { type: 'FILTER_CONFIRMED' });
+    s = run(s, { type: 'PRINT_STARTED' }, { type: 'PRINT_FINISHED', ok: false });
+    expect(s.printsUsed).toBe(0);
+    s = run(s, { type: 'PRINT_STARTED' }, { type: 'PRINT_FINISHED', ok: true });
+    s = run(s, { type: 'PRINT_STARTED' }, { type: 'PRINT_FINISHED', ok: true });
+    expect(printLimitReached(s)).toBe(true);
+    expect(run(s, { type: 'PRINT_STARTED' }).printing).toBe(false);
+  });
+
+  it('operator mode opens only from Attract and closes back to it', () => {
+    expect(run(toReview(), { type: 'OPERATOR_OPENED', token: 't' }).screen).toBe('review');
+    let s = run(booted, { type: 'OPERATOR_OPENED', token: 't' });
+    expect(s.screen).toBe('operator');
+    expect(s.adminToken).toBe('t');
+    s = run(s, { type: 'CONFIG_UPDATED', config: paidConfig });
+    expect(s.config?.payment.enabled).toBe(true);
+    s = run(s, { type: 'OPERATOR_CLOSED' });
+    expect(s.screen).toBe('attract');
+    expect(s.adminToken).toBeNull();
   });
 });

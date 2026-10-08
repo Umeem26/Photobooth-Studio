@@ -9,7 +9,6 @@ import { abandonToAttract } from './sessionActions';
 
 const TICK_MS = 1_000;
 const FIRST_DELAY_MS = 800;
-const BETWEEN_MS = 1_000;
 const THUMB_MS = 1_200;
 
 export function CaptureScreen() {
@@ -26,6 +25,9 @@ export function CaptureScreen() {
 
   const current = state.queue[0];
   const total = state.frames.length;
+  // Dari Mode Operator: detik hitung mundur (2-5) dan jeda antar foto
+  const countdownFrom = state.config?.countdownSeconds ?? 3;
+  const betweenMs = (state.config?.pauseSeconds ?? 1) * 1_000;
 
   // Kamera bisa hilang di tengah sesi: minta ulang, gagal -> layar Error
   useEffect(() => {
@@ -44,7 +46,7 @@ export function CaptureScreen() {
     const wait = (ms: number) => new Promise<void>((resolve) => timers.push(window.setTimeout(resolve, ms)));
 
     if (current === undefined) {
-      wait(BETWEEN_MS).then(() => !cancelled && dispatch({ type: 'CAPTURE_FINISHED' }));
+      wait(Math.max(betweenMs, 1_000)).then(() => !cancelled && dispatch({ type: 'CAPTURE_FINISHED' }));
       return () => {
         cancelled = true;
         timers.forEach(window.clearTimeout);
@@ -54,8 +56,8 @@ export function CaptureScreen() {
     const sessionId = state.sessionId;
 
     (async () => {
-      await wait(shots.current === 0 ? FIRST_DELAY_MS : BETWEEN_MS);
-      for (const n of [3, 2, 1]) {
+      await wait(shots.current === 0 ? FIRST_DELAY_MS : betweenMs);
+      for (let n = countdownFrom; n >= 1; n--) {
         if (cancelled) return;
         setCount(n);
         await wait(TICK_MS);
@@ -89,7 +91,7 @@ export function CaptureScreen() {
       timers.forEach(window.clearTimeout);
       setCount(null);
     };
-  }, [current, confirming, camera.stream, api, state.sessionId, attempt, dispatch, handleError]);
+  }, [current, confirming, camera.stream, api, state.sessionId, attempt, dispatch, handleError, countdownFrom, betweenMs]);
 
   const keepGoing = () => setConfirming(false);
   const discard = () => abandonToAttract(booth);

@@ -15,6 +15,11 @@ const UI_INDEX = path.join(__dirname, '..', 'ui', 'dist', 'index.html');
 if (process.env.VANDEBOOTH_FAKE_CAMERA === '1') {
   app.commandLine.appendSwitch('use-fake-device-for-media-stream');
   app.commandLine.appendSwitch('use-fake-ui-for-media-stream');
+  // Jendela tes sering tertutup jendela lain; tanpa ini Chromium di Windows menganggapnya
+  // tersembunyi dan kamera/video bisa tidak pernah mulai
+  app.commandLine.appendSwitch('disable-backgrounding-occluded-windows');
+  app.commandLine.appendSwitch('disable-renderer-backgrounding');
+  app.commandLine.appendSwitch('disable-features', 'CalculateNativeWinOcclusion');
 }
 
 let sidecar = null;
@@ -45,7 +50,8 @@ function createWindow() {
     kiosk: KIOSK,
     backgroundColor: '#F7EFE2',
     autoHideMenuBar: true,
-    show: false,
+    // Langsung tampil: getUserMedia dari jendela tersembunyi bisa menggantung di Windows
+    show: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true,
@@ -53,7 +59,6 @@ function createWindow() {
       nodeIntegration: false,
     },
   });
-  win.once('ready-to-show', () => win.show());
   win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   win.webContents.on('will-navigate', (e, url) => {
     if (!isAppUrl(url)) e.preventDefault();

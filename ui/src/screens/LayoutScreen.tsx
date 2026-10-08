@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { useBooth } from '../app/context';
 import type { Layout } from '../api/types';
-import { Button, SelectableCard, StepPill, StripPreview, Title, Wordmark } from '../components/ui';
+import { Button, SelectableCard, StripPreview, Title, Wordmark } from '../components/ui';
 import { useIdle } from '../hooks/useIdle';
 import { useKeys } from '../hooks/useKeys';
 import { formatEventDateShort, strings } from '../strings';
+import { FlowSteps } from './FlowSteps';
 import { abandonToAttract } from './sessionActions';
 
 function LayoutPreview({ layout, date }: { layout: Layout; date: string }) {
@@ -38,7 +39,7 @@ export function LayoutScreen() {
       // Sesi dibuat di Attract dengan layout default; ganti sesi bila tamu memilih layout lain
       if (state.sessionLayoutId !== layoutId) {
         const old = sessionId;
-        sessionId = await api.createSession(layoutId);
+        sessionId = await api.createSession(layoutId, old);
         api.abandon(old).catch(() => undefined);
       }
       dispatch({ type: 'LAYOUT_CONFIRMED', sessionId, layoutId });
@@ -56,7 +57,7 @@ export function LayoutScreen() {
       <div className="abs" style={{ left: 110, top: 70 }}>
         <Wordmark size={44} />
       </div>
-      <StepPill active={1} />
+      <FlowSteps screen="layout" />
       <div className="abs" style={{ left: 110, top: 150 }}>
         <Title className="title-screen" lead={strings.layout.titleLead} emphasis={strings.layout.titleEmphasis} />
       </div>

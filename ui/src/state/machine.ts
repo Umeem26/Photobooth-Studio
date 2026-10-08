@@ -1,12 +1,25 @@
 import type { BoothConfig, FilterOption, Layout } from '../api/types';
 
 /**
- * State machine tunggal (docs/flow.md):
- * attract -> layout -> capture -> review -> filter -> result -> attract.
+ * State machine tunggal (docs/flow.md + docs/phase3.md):
+ * attract -> layout -> [pay] -> capture -> review -> filter -> result -> attract.
+ * 'pay' hanya bila payment.enabled. 'operator' = Mode Operator dari Attract.
  * 'boot' memeriksa sidecar; 'error' menampilkan kamera/sidecar bermasalah.
  */
-export type Screen = 'boot' | 'attract' | 'layout' | 'capture' | 'review' | 'filter' | 'result' | 'error';
+export type Screen =
+  | 'boot'
+  | 'attract'
+  | 'layout'
+  | 'pay'
+  | 'capture'
+  | 'review'
+  | 'filter'
+  | 'result'
+  | 'operator'
+  | 'error';
 export type ErrorKind = 'camera' | 'service';
+
+export const RESULT_TIMEOUT_S = 45;
 
 export interface State {
   screen: Screen;
@@ -25,16 +38,25 @@ export interface State {
   retakesUsed: number;
   filterId: string;
   stripUrl: string | null;
+  /** Hitung mundur layar Result; dijeda selama mencetak. */
+  resultSecondsLeft: number;
+  printing: boolean;
+  printsUsed: number;
+  /** Token admin Mode Operator (hanya di memori). */
+  adminToken: string | null;
   toast: string | null;
 }
 
 export type Action =
   | { type: 'BOOTED'; config: BoothConfig; layouts: Layout[]; filters: FilterOption[] }
+  | { type: 'CONFIG_UPDATED'; config: BoothConfig }
   | { type: 'FAILED'; kind: ErrorKind }
   | { type: 'RETRY' }
   | { type: 'SESSION_STARTED'; sessionId: string; layoutId: string }
   | { type: 'LAYOUT_SELECTED'; layoutId: string }
   | { type: 'LAYOUT_CONFIRMED'; sessionId: string; layoutId: string }
+  | { type: 'PAYMENT_CONFIRMED' }
+  | { type: 'BACK_TO_LAYOUT' }
   | { type: 'FRAME_CAPTURED'; index: number; url: string }
   | { type: 'CAPTURE_FINISHED' }
   | { type: 'RETAKE_REQUESTED'; index: number }
@@ -42,7 +64,12 @@ export type Action =
   | { type: 'FILTER_SELECTED'; filterId: string }
   | { type: 'STRIP_COMPOSED'; filterId: string; url: string }
   | { type: 'FILTER_CONFIRMED' }
+  | { type: 'RESULT_TICK' }
+  | { type: 'PRINT_STARTED' }
+  | { type: 'PRINT_FINISHED'; ok: boolean; copiesUsed?: number }
   | { type: 'RESTARTED_SAME_LAYOUT'; sessionId: string }
+  | { type: 'OPERATOR_OPENED'; token: string }
+  | { type: 'OPERATOR_CLOSED' }
   | { type: 'BACK_TO_ATTRACT' }
   | { type: 'TOAST'; message: string | null };
 
@@ -62,6 +89,10 @@ export const initialState: State = {
   retakesUsed: 0,
   filterId: DEFAULT_FILTER,
   stripUrl: null,
+  resultSecondsLeft: RESULT_TIMEOUT_S,
+  printing: false,
+  printsUsed: 0,
+  adminToken: null,
   toast: null,
 };
 
@@ -73,11 +104,20 @@ export function retakesLeft(state: State): number {
   return Math.max(0, (state.config?.maxRetakes ?? 0) - state.retakesUsed);
 }
 
-function freshCapture(state: State, sessionId: string, layoutId: string): State {
+export function paymentEnabled(state: Pick<State, 'config'>): boolean {
+  return !!state.config?.payment?.enabled;
+}
+
+export function printLimitReached(state: State): boolean {
+  return state.printsUsed >= (state.config?.print?.maxCopies ?? 0);
+}
+
+function freshSession(state: State, sessionId: string, layoutId: string): State {
   const n = photosFor(state, layoutId);
   return {
     ...state,
-    screen: 'capture',
+    // Dengan pembayaran aktif, sesi baru selalu lewat layar Pay dulu
+    screen: paymentEnabled(state) ? 'pay' : 'capture',
     sessionId,
     sessionLayoutId: layoutId,
     layoutId,
@@ -86,6 +126,8 @@ function freshCapture(state: State, sessionId: string, layoutId: string): State 
     retakesUsed: 0,
     filterId: DEFAULT_FILTER,
     stripUrl: null,
+    printing: false,
+    printsUsed: 0,
   };
 }
 
@@ -99,6 +141,9 @@ function clearSession(state: State): State {
     retakesUsed: 0,
     filterId: DEFAULT_FILTER,
     stripUrl: null,
+    resultSecondsLeft: RESULT_TIMEOUT_S,
+    printing: false,
+    printsUsed: 0,
   };
 }
 
@@ -115,8 +160,11 @@ export function reducer(state: State, action: Action): State {
         layoutId: action.layouts[0]?.id ?? null,
       };
 
+    case 'CONFIG_UPDATED':
+      return { ...state, config: action.config };
+
     case 'FAILED':
-      return { ...clearSession(state), screen: 'error', errorKind: action.kind };
+      return { ...clearSession(state), screen: 'error', errorKind: action.kind, adminToken: null };
 
     case 'RETRY':
       return state.screen === 'error' ? { ...state, screen: 'boot', errorKind: null } : state;
@@ -138,7 +186,13 @@ export function reducer(state: State, action: Action): State {
 
     case 'LAYOUT_CONFIRMED':
       if (state.screen !== 'layout') return state;
-      return freshCapture(state, action.sessionId, action.layoutId);
+      return freshSession(state, action.sessionId, action.layoutId);
+
+    case 'PAYMENT_CONFIRMED':
+      return state.screen === 'pay' ? { ...state, screen: 'capture' } : state;
+
+    case 'BACK_TO_LAYOUT':
+      return state.screen === 'pay' ? { ...state, screen: 'layout' } : state;
 
     case 'FRAME_CAPTURED': {
       if (state.screen !== 'capture' || state.queue[0] !== action.index) return state;
@@ -171,11 +225,38 @@ export function reducer(state: State, action: Action): State {
 
     case 'FILTER_CONFIRMED':
       if (state.screen !== 'filter' || !state.stripUrl) return state;
-      return { ...state, screen: 'result' };
+      return { ...state, screen: 'result', resultSecondsLeft: RESULT_TIMEOUT_S, printing: false };
+
+    case 'RESULT_TICK': {
+      if (state.screen !== 'result' || state.printing) return state;
+      const left = state.resultSecondsLeft - 1;
+      return left <= 0 ? { ...clearSession(state), screen: 'attract' } : { ...state, resultSecondsLeft: left };
+    }
+
+    case 'PRINT_STARTED':
+      if (state.screen !== 'result' || state.printing || printLimitReached(state)) return state;
+      return { ...state, printing: true };
+
+    case 'PRINT_FINISHED':
+      if (state.screen !== 'result' || !state.printing) return state;
+      return {
+        ...state,
+        printing: false,
+        printsUsed: action.copiesUsed ?? (action.ok ? state.printsUsed + 1 : state.printsUsed),
+      };
 
     case 'RESTARTED_SAME_LAYOUT':
       if (state.screen !== 'result' || !state.layoutId) return state;
-      return freshCapture(state, action.sessionId, state.layoutId);
+      return freshSession(state, action.sessionId, state.layoutId);
+
+    case 'OPERATOR_OPENED':
+      if (state.screen !== 'attract') return state;
+      return { ...clearSession(state), screen: 'operator', adminToken: action.token };
+
+    case 'OPERATOR_CLOSED':
+      return state.screen === 'operator'
+        ? { ...state, screen: 'attract', adminToken: null, layoutId: state.layouts[0]?.id ?? null }
+        : state;
 
     case 'BACK_TO_ATTRACT':
       return { ...clearSession(state), screen: 'attract', layoutId: state.layouts[0]?.id ?? null };
@@ -185,18 +266,26 @@ export function reducer(state: State, action: Action): State {
   }
 }
 
-/** Langkah StepPill (1 Layout, 2 Photos, 3 Result) untuk tiap layar. */
-export function stepFor(screen: Screen): 1 | 2 | 3 | null {
-  switch (screen) {
-    case 'layout':
-      return 1;
-    case 'capture':
-    case 'review':
-      return 2;
-    case 'filter':
-    case 'result':
-      return 3;
-    default:
-      return null;
-  }
+export type StepLabel = 'Layout' | 'Pay' | 'Photos' | 'Result';
+
+/** Langkah StepPill: 3 langkah, atau 4 (dengan Pay) bila pembayaran aktif. */
+export function stepsFor(withPayment: boolean): StepLabel[] {
+  return withPayment ? ['Layout', 'Pay', 'Photos', 'Result'] : ['Layout', 'Photos', 'Result'];
+}
+
+/** Nomor langkah aktif (1-based) untuk layar, atau null bila tanpa StepPill. */
+export function stepFor(screen: Screen, withPayment = false): number | null {
+  const label: StepLabel | null =
+    screen === 'layout'
+      ? 'Layout'
+      : screen === 'pay'
+        ? 'Pay'
+        : screen === 'capture' || screen === 'review'
+          ? 'Photos'
+          : screen === 'filter' || screen === 'result'
+            ? 'Result'
+            : null;
+  if (!label) return null;
+  const idx = stepsFor(withPayment).indexOf(label);
+  return idx < 0 ? null : idx + 1;
 }

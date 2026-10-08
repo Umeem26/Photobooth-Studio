@@ -101,10 +101,10 @@ export function Chip({ size = 'sm', onCamera, children, style, testId }: {
   );
 }
 
-export function StepPill({ active }: { active: 1 | 2 | 3 }) {
+export function StepPill({ active, steps = strings.steps }: { active: number; steps?: readonly string[] }) {
   return (
     <div className="abs steps" style={{ right: 110, top: 62 }} data-testid="step-pill">
-      {strings.steps.map((label, i) => (
+      {steps.map((label, i) => (
         <span key={label} className={`step${i + 1 === active ? ' active' : ''}`}>
           <span className="step-num">{i + 1}</span>
           {label}
@@ -241,5 +241,47 @@ export function ProgressDots({ total, current, done }: { total: number; current:
         return <span key={idx} className={cls} />;
       })}
     </span>
+  );
+}
+
+// ---------------------------------------------------------------- kontrol Mode Operator (>= 72 px)
+
+export function Toggle({ on, onChange, label, testId }: {
+  on: boolean;
+  onChange: (next: boolean) => void;
+  label: string;
+  testId?: string;
+}) {
+  return (
+    <button type="button" role="switch" aria-checked={on} aria-label={label} className={`toggle${on ? ' on' : ''}`}
+      onClick={() => onChange(!on)} data-testid={testId}>
+      <span className="toggle-knob" />
+    </button>
+  );
+}
+
+export function Segmented<T extends string | number>({ options, value, onChange, label, testId }: {
+  options: { value: T; label: string }[];
+  value: T;
+  onChange: (next: T) => void;
+  label: string;
+  testId?: string;
+}) {
+  return (
+    <span className="segmented" role="radiogroup" aria-label={label} data-testid={testId}>
+      {options.map((o) => (
+        <button key={String(o.value)} type="button" role="radio" aria-checked={o.value === value}
+          className={`segment${o.value === value ? ' active' : ''}`} onClick={() => onChange(o.value)}>
+          {o.label}
+        </button>
+      ))}
+    </span>
+  );
+}
+
+/** QR dari PNG base64 (dibuat sidecar dengan ZXing), dirender tajam. */
+export function QrImage({ png, size, testId }: { png: string; size: number; testId?: string }) {
+  return (
+    <img className="qr" src={`data:image/png;base64,${png}`} alt="" width={size} height={size} data-testid={testId} />
   );
 }

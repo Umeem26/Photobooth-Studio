@@ -1,5 +1,16 @@
 import type { BoothEnv } from './env';
-import type { BoothConfig, FilterOption, Layout } from './types';
+import type {
+  AdminConfig,
+  AdminStatus,
+  BoothConfig,
+  FilterOption,
+  Layout,
+  PaymentStart,
+  Printer,
+  PrintStatus,
+  SessionSummary,
+  ShareLink,
+} from './types';
 
 /** Sidecar membalas dengan status error (4xx/5xx). */
 export class ApiError extends Error {
@@ -7,6 +18,8 @@ export class ApiError extends Error {
     readonly status: number,
     readonly code: string,
     message: string,
+    /** Isi body error lain (mis. attemptsLeft, retryAfterSeconds). */
+    readonly details: Record<string, unknown> = {},
   ) {
     super(message);
   }
@@ -16,6 +29,7 @@ export class ApiError extends Error {
 export class ServiceUnavailableError extends Error {}
 
 const TOKEN_HEADER = 'X-Booth-Token';
+const ADMIN_HEADER = 'X-Admin-Token';
 
 export class BoothApi {
   constructor(private readonly env: BoothEnv) {}
@@ -38,14 +52,16 @@ export class BoothApi {
     if (!res.ok) {
       let code = 'error';
       let message = res.statusText;
+      let details: Record<string, unknown> = {};
       try {
         const body = await res.json();
         code = body.error ?? code;
         message = body.message ?? message;
+        details = body;
       } catch {
         // body bukan JSON
       }
-      throw new ApiError(res.status, code, message);
+      throw new ApiError(res.status, code, message, details);
     }
     return res;
   }
@@ -54,10 +70,10 @@ export class BoothApi {
     return (await this.request(path, init, timeoutMs)).json() as Promise<T>;
   }
 
-  private post<T>(path: string, body: unknown, timeoutMs?: number): Promise<T> {
+  private post<T>(path: string, body: unknown, timeoutMs?: number, headers: Record<string, string> = {}): Promise<T> {
     return this.json<T>(
       path,
-      { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) },
+      { method: 'POST', headers: { 'Content-Type': 'application/json', ...headers }, body: JSON.stringify(body) },
       timeoutMs,
     );
   }
@@ -78,8 +94,82 @@ export class BoothApi {
     return this.json<FilterOption[]>('/api/filters');
   }
 
-  async createSession(layout: string): Promise<string> {
-    return (await this.post<{ sessionId: string }>('/api/sessions', { layout })).sessionId;
+  /** @param continueFrom sesi sebelumnya ("Start over") agar status lunas ikut terbawa */
+  async createSession(layout: string, continueFrom?: string | null): Promise<string> {
+    const body = continueFrom ? { layout, continueFrom } : { layout };
+    return (await this.post<{ sessionId: string }>('/api/sessions', body)).sessionId;
+  }
+
+  // ---------------------------------------------------------------- pembayaran demo
+
+  startPayment(sessionId: string) {
+    return this.post<PaymentStart>(`/api/sessions/${sessionId}/payment`, {});
+  }
+
+  simulatePayment(sessionId: string) {
+    return this.post<{ status: string }>(`/api/sessions/${sessionId}/payment/simulate`, {});
+  }
+
+  paymentStatus(sessionId: string) {
+    return this.json<{ status: string; required: boolean }>(`/api/sessions/${sessionId}/payment`);
+  }
+
+  // ---------------------------------------------------------------- berbagi dan cetak
+
+  share(sessionId: string) {
+    return this.post<ShareLink>(`/api/sessions/${sessionId}/share`, {});
+  }
+
+  print(sessionId: string, copies = 1) {
+    return this.post<PrintStatus>(`/api/sessions/${sessionId}/print`, { copies });
+  }
+
+  printStatus(sessionId: string) {
+    return this.json<PrintStatus>(`/api/sessions/${sessionId}/print`);
+  }
+
+  printers() {
+    return this.json<Printer[]>('/api/printers');
+  }
+
+  // ---------------------------------------------------------------- Mode Operator
+
+  pinStatus() {
+    return this.json<{ set: boolean }>('/api/admin/pin');
+  }
+
+  async createPin(pin: string): Promise<string> {
+    return (await this.post<{ token: string }>('/api/admin/pin', { pin })).token;
+  }
+
+  /** Salah PIN -> ApiError 403 (details.attemptsLeft); terkunci -> 423 (details.retryAfterSeconds). */
+  async login(pin: string): Promise<string> {
+    return (await this.post<{ token: string }>('/api/admin/login', { pin })).token;
+  }
+
+  admin(token: string) {
+    const h = { [ADMIN_HEADER]: token };
+    return {
+      logout: () => this.post('/api/admin/logout', {}, undefined, h),
+      config: () => this.json<AdminConfig>('/api/admin/config', { headers: h }),
+      saveConfig: (changes: AdminConfig) =>
+        this.json<AdminConfig>('/api/admin/config', {
+          method: 'PUT',
+          headers: { ...h, 'Content-Type': 'application/json' },
+          body: JSON.stringify(changes),
+        }),
+      sessions: () => this.json<SessionSummary[]>('/api/admin/sessions', { headers: h }),
+      thumbUrl: async (id: string) =>
+        URL.createObjectURL(await (await this.request(`/api/admin/sessions/${id}/thumb.jpg`, { headers: h })).blob()),
+      deleteSession: (id: string) => this.json(`/api/admin/sessions/${id}`, { method: 'DELETE', headers: h }),
+      exportAll: () => this.post<{ path: string }>('/api/admin/export-all', {}, 60_000, h),
+      purge: (olderThanDays: number) =>
+        this.post<{ deleted: number }>('/api/admin/purge', { olderThanDays }, undefined, h),
+      status: () => this.json<AdminStatus>('/api/admin/status', { headers: h }),
+      shareTest: () => this.post<ShareLink>('/api/admin/share-test', {}, undefined, h),
+      printTest: () => this.post<PrintStatus>('/api/admin/print-test', {}, undefined, h),
+      printTestStatus: () => this.json<PrintStatus>('/api/admin/print-test', { headers: h }),
+    };
   }
 
   async putFrame(sessionId: string, index: number, jpeg: Blob): Promise<void> {

@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { useBooth } from '../app/context';
-import { Button, Chip, StepPill, Title, Wordmark } from '../components/ui';
+import { Button, Chip, Title, Wordmark } from '../components/ui';
 import { useIdle } from '../hooks/useIdle';
 import { useKeys } from '../hooks/useKeys';
 import { retakesLeft } from '../state/machine';
 import { strings } from '../strings';
+import { FlowSteps } from './FlowSteps';
 import { abandonToAttract } from './sessionActions';
 
 const AREA_LEFT = 110;
@@ -35,7 +36,8 @@ export function ReviewScreen() {
     setBusy(true);
     const old = state.sessionId;
     try {
-      const sessionId = await api.createSession(state.layoutId);
+      // Status lunas ikut terbawa: tamu tidak membayar dua kali
+      const sessionId = await api.createSession(state.layoutId, old);
       if (old) api.abandon(old).catch(() => undefined);
       dispatch({ type: 'SESSION_STARTED', sessionId, layoutId: state.layoutId });
     } catch (e) {
@@ -52,7 +54,7 @@ export function ReviewScreen() {
       <div className="abs" style={{ left: 110, top: 70 }}>
         <Wordmark size={44} />
       </div>
-      <StepPill active={2} />
+      <FlowSteps screen="review" />
       <div className="abs" style={{ left: 110, top: 150 }}>
         <Title className="title-screen" lead={strings.review.titleLead} emphasis={strings.review.titleEmphasis} />
       </div>

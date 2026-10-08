@@ -19,6 +19,11 @@ export function formatEventDateShort(iso: string): string {
   return d ? `${String(d[2]).padStart(2, '0')}.${String(d[1]).padStart(2, '0')}.${d[0]}` : iso;
 }
 
+/** 25000 -> "25.000" (pemisah ribuan titik). */
+export function formatThousands(n: number): string {
+  return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+}
+
 export const strings = {
   brand: 'Van de Booth',
   steps: ['Layout', 'Photos', 'Result'] as const,
@@ -84,6 +89,137 @@ export const strings = {
     retake: 'Retake',
     returning: (s: number) => `Returning to start in ${s} ${s === 1 ? 'second' : 'seconds'}`,
     saved: (path: string) => `Saved to ${path}`,
+    print: 'Print strip',
+    printing: 'Printing…',
+    printLimit: 'Print limit reached',
+    printSent: 'Sent to the printer',
+    printFailed: 'Printer not found. Ask the host for help.',
+    scanTitle: 'Scan to download',
+    scanBody: 'Join the booth Wi-Fi, then scan this code.',
+    sharingOff: 'Sharing is off.',
+  },
+
+  pay: {
+    titleLead: 'Scan',
+    titleMiddle: 'to',
+    titleEmphasis: 'pay.',
+    /** Ditampilkan huruf kapital lewat CSS (label kecil). */
+    session: (photos: number) => `One session, ${photos} photos`,
+    price: (amount: number) => `Rp ${formatThousands(amount)}`,
+    demo: 'Demo mode · no real payment',
+    waiting: 'Waiting for payment…',
+    updates: 'This screen updates by itself.',
+    simulate: 'Simulate payment',
+    back: 'Back',
+  },
+
+  pin: {
+    create: 'Create a PIN',
+    createHint: 'Choose 4 to 8 digits. Keep it private.',
+    confirm: 'Enter it again',
+    mismatch: 'The PINs do not match. Try again.',
+    enter: 'Enter PIN',
+    wrong: 'Wrong PIN. Try again.',
+    locked: 'Too many attempts. Wait 30 seconds.',
+    deleteKey: 'Delete',
+    enterKey: 'Enter',
+    cancel: 'Cancel',
+  },
+
+  operator: {
+    mode: 'Operator mode',
+    exit: 'Exit operator mode',
+    saved: 'Saved.',
+    saveFailed: 'Could not save. Check the value and try again.',
+    menu: {
+      event: 'Event',
+      photos: 'Photos',
+      payment: 'Payment',
+      sharing: 'Sharing',
+      printing: 'Printing',
+      gallery: 'Gallery',
+      status: 'Status',
+    } as Record<string, string>,
+    event: {
+      name: 'Event name',
+      nameHint: 'Shown on the welcome screen and under every strip.',
+      date: 'Event date',
+      dateHint: 'Printed in the strip footer. Leave empty to use today.',
+    },
+    photos: {
+      retakes: 'Retakes per session',
+      retakesHint: 'How many photos a guest can take again.',
+      countdown: 'Countdown',
+      countdownHint: 'Seconds before each photo.',
+      pause: 'Pause between photos',
+      pauseHint: 'Seconds to get ready for the next pose.',
+      seconds: (n: number) => `${n} s`,
+    },
+    payment: {
+      toggle: 'Demo payment',
+      toggleHint: 'Guests see a demo QR code before the photos. No real money moves.',
+      price: 'Price',
+      priceHint: 'Shown on the payment screen, in rupiah.',
+    },
+    sharing: {
+      toggle: 'Share over the local network',
+      toggleHint: 'Guests scan a QR code and download from this booth.',
+      address: 'Network address',
+      addressHint: 'Detected automatically. Override it if the QR code does not open.',
+      addressNone: 'Not connected',
+      expiry: 'Links expire after',
+      expiryHint: 'Older links stop working. Photos stay on this computer.',
+      hours: (n: number) => `${n} h`,
+      testTitle: 'Test it before the event',
+      testBody:
+        'Join the booth Wi-Fi on your phone, then scan this code. If it does not open, allow Van de Booth through the Windows firewall on private networks.',
+      off: 'Sharing is off.',
+    },
+    printing: {
+      printer: 'Printer',
+      printerHint: 'Strips print on 4x6 paper.',
+      systemDefault: 'System default',
+      copies: 'Copies per guest',
+      copiesHint: 'The print button stops after this many copies.',
+      layout: 'Paper layout',
+      layoutHint: 'Two-up puts two strips on one sheet to cut.',
+      single: 'Single',
+      twoUp: 'Two-up',
+      test: 'Print test page',
+      testSent: 'Test page sent.',
+    },
+    gallery: {
+      exportAll: 'Export all',
+      exported: (path: string) => `Exported to ${path}`,
+      purge: 'Delete older sessions',
+      purgeHint: (days: number) => `Removes sessions older than ${days} days from this computer.`,
+      days: (n: number) => `${n} days`,
+      purgeConfirm: (days: number) => `Delete sessions older than ${days} days?`,
+      purged: (n: number) => `${n} ${n === 1 ? 'session' : 'sessions'} deleted.`,
+      empty: 'No sessions yet.',
+      confirmDelete: 'Delete this session?',
+      confirmBody: 'The photos and strip are removed from this computer.',
+      delete: 'Delete',
+      cancel: 'Cancel',
+      status: {
+        active: 'In progress',
+        composed: 'Finished',
+        exported: 'Saved',
+        abandoned: 'Cancelled',
+      } as Record<string, string>,
+    },
+    status: {
+      camera: 'Camera',
+      cameraNone: 'No camera found',
+      printer: 'Printer',
+      printerNone: 'No printer found',
+      version: 'Version',
+      disk: 'Free disk space',
+      sharing: 'Sharing address',
+      copy: 'Copy diagnostics',
+      copied: 'Copied.',
+      gigabytes: (gb: string) => `${gb} GB`,
+    },
   },
 
   error: {

@@ -1,14 +1,34 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useBooth } from '../app/context';
 import { LiveVideo } from '../components/LiveVideo';
+import { PinDialog } from '../components/PinDialog';
 import { Button, Chip, StripPreview, Title, Wordmark } from '../components/ui';
 import { useKeys } from '../hooks/useKeys';
 import { formatEventDateShort, strings } from '../strings';
 
+export const OPERATOR_HOLD_MS = 3_000;
+
 export function AttractScreen() {
   const { state, dispatch, api, camera, handleError } = useBooth();
   const [starting, setStarting] = useState(false);
+  const [pinMode, setPinMode] = useState<'create' | 'enter' | null>(null);
+  const holdTimer = useRef<number>();
   const config = state.config;
+
+  // Mode Operator: tekan dan tahan wordmark 3 detik
+  const startHold = () => {
+    window.clearTimeout(holdTimer.current);
+    holdTimer.current = window.setTimeout(async () => {
+      if (!api) return;
+      try {
+        setPinMode((await api.pinStatus()).set ? 'enter' : 'create');
+      } catch (e) {
+        handleError(e, strings.toast.composeFailed);
+      }
+    }, OPERATOR_HOLD_MS);
+  };
+  const cancelHold = () => window.clearTimeout(holdTimer.current);
+  useEffect(() => () => window.clearTimeout(holdTimer.current), []);
 
   // Kamera diminta sekali di layar ini; gagal -> layar Error
   useEffect(() => {
@@ -34,11 +54,13 @@ export function AttractScreen() {
     }
   };
 
-  useKeys({ onEnter: start });
+  useKeys({ onEnter: pinMode ? undefined : start });
 
   return (
     <>
-      <div className="abs" style={{ left: 110, top: 84 }}>
+      <div className="abs" style={{ left: 110, top: 84, touchAction: 'none' }} data-testid="wordmark-hold"
+        onPointerDown={startHold} onPointerUp={cancelHold} onPointerLeave={cancelHold} onPointerCancel={cancelHold}
+        onContextMenu={(e) => e.preventDefault()}>
         <Wordmark size={52} />
       </div>
       <div className="abs" style={{ left: 110, top: 230 }}>
@@ -83,6 +105,14 @@ export function AttractScreen() {
           captionSize={12}
         />
       </div>
+      {pinMode && api && (
+        <PinDialog
+          api={api}
+          mode={pinMode}
+          onCancel={() => setPinMode(null)}
+          onSuccess={(token) => dispatch({ type: 'OPERATOR_OPENED', token })}
+        />
+      )}
     </>
   );
 }

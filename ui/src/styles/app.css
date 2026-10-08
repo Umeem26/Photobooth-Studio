@@ -178,6 +178,63 @@ img { display: block; }
 /* ---------- Photo cards (Review, Filter) ---------- */
 .photo { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: var(--r-inner); background: var(--tint); }
 
+/* ---------- QR ---------- */
+.qr { display: block; margin: 0 auto; image-rendering: pixelated; background: var(--strip-white); }
+
+/* ---------- Label kecil ---------- */
+.label-caps { font-size: 30px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-2); }
+
+/* ---------- Mode Operator (kontrol >= 72 px) ---------- */
+.op-sidebar {
+  position: absolute; left: 0; top: 0; width: 430px; height: 1080px;
+  background: var(--paper); border-right: 3px solid var(--line); padding: 70px 40px;
+}
+.op-caption { font-size: 19px; font-weight: 700; letter-spacing: 0.12em; color: var(--ink-2); margin: 16px 0 40px 4px; text-transform: uppercase; }
+.op-menu {
+  display: flex; align-items: center; width: 100%; height: 84px; border-radius: 24px; padding: 0 28px;
+  font-weight: 700; font-size: 30px; color: var(--ink); margin-bottom: 8px; text-align: left;
+}
+.op-menu.active { background: var(--ink); color: var(--paper); }
+.op-title { font-family: var(--font-serif); font-size: 84px; font-weight: 560; letter-spacing: -0.03em; line-height: 1; }
+.op-card { position: absolute; left: 510px; top: 230px; width: 1330px; background: var(--paper); border: 3px solid var(--line); border-radius: var(--r-card); padding: 24px 56px; }
+.op-row { min-height: 132px; border-bottom: 2px solid var(--line); display: flex; align-items: center; justify-content: space-between; gap: 40px; }
+.op-row:last-child { border-bottom: none; }
+.op-label { font-size: 32px; font-weight: 700; }
+.op-hint { font-size: 22px; color: var(--ink-2); font-weight: 500; margin-top: 4px; }
+.op-btn { height: 84px; font-size: 28px; padding: 0 40px; border-width: 3px; }
+.op-input {
+  height: 72px; min-width: 420px; border-radius: var(--r-pill); border: 2px solid var(--line); background: var(--paper);
+  padding: 0 28px; font: inherit; font-size: 28px; font-weight: 600; color: var(--ink);
+}
+.op-input:focus { outline: 3px solid var(--ink); outline-offset: 2px; }
+.op-scroll { max-height: 820px; overflow-y: auto; }
+
+.toggle { position: relative; width: 132px; height: 72px; border-radius: var(--r-pill); background: var(--line); flex: none; transition: background var(--dur-fast) var(--ease-out); }
+.toggle.on { background: var(--verm); }
+.toggle-knob { position: absolute; top: 6px; left: 6px; width: 60px; height: 60px; border-radius: 50%; background: var(--paper); transition: left var(--dur-fast) var(--ease-out); }
+.toggle.on .toggle-knob { left: 66px; }
+
+.segmented { display: inline-flex; gap: 6px; padding: 6px; border-radius: var(--r-pill); border: 2px solid var(--line); background: var(--paper); flex: none; }
+.segment { display: inline-flex; align-items: center; justify-content: center; height: 72px; padding: 0 34px; border-radius: var(--r-pill); font-weight: 700; font-size: 26px; color: var(--ink); }
+.segment.active { background: var(--ink); color: var(--paper); }
+
+.stepper { display: inline-flex; align-items: center; gap: 18px; flex: none; }
+.stepper-value { min-width: 64px; text-align: center; font-size: 34px; font-weight: 700; }
+.stepper .btn { width: 72px; height: 72px; padding: 0; font-size: 34px; border-width: 3px; }
+
+.gallery-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; padding: 24px 0; }
+.gallery-item { background: var(--cream); border: 2px solid var(--line); border-radius: 28px; padding: 14px; }
+.gallery-thumb { width: 100%; height: 200px; object-fit: contain; background: var(--tint); border-radius: 18px; }
+.gallery-meta { font-size: 20px; color: var(--ink-2); font-weight: 600; margin: 10px 4px; }
+
+/* ---------- Keypad PIN ---------- */
+.keypad { display: grid; grid-template-columns: repeat(3, 120px); gap: 18px; justify-content: center; margin-top: 36px; }
+.keypad .btn { width: 120px; height: 104px; padding: 0; font-size: 40px; }
+.keypad .btn.wide { font-size: 24px; }
+.pin-dots { display: flex; gap: 18px; justify-content: center; margin-top: 28px; min-height: 30px; }
+.pin-dot { width: 26px; height: 26px; border-radius: 50%; border: 3px solid var(--ink); }
+.pin-dot.filled { background: var(--ink); }
+
 @media (prefers-reduced-motion: reduce) {
   .screen { animation-name: fade-in; }
   .disc-num { animation-name: fade-in; }

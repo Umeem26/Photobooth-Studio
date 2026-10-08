@@ -12,16 +12,20 @@ import { ReviewScreen } from './screens/ReviewScreen';
 import { FilterScreen } from './screens/FilterScreen';
 import { ResultScreen } from './screens/ResultScreen';
 import { ErrorScreen } from './screens/ErrorScreen';
+import { PayScreen } from './screens/PayScreen';
+import { OperatorScreen } from './screens/OperatorScreen';
 
 const TOAST_MS = 5_000;
 
-const SCREENS: Record<Exclude<Screen, 'boot'>, () => JSX.Element> = {
+const SCREENS: Record<Exclude<Screen, 'boot'>, () => JSX.Element | null> = {
   attract: AttractScreen,
   layout: LayoutScreen,
+  pay: PayScreen,
   capture: CaptureScreen,
   review: ReviewScreen,
   filter: FilterScreen,
   result: ResultScreen,
+  operator: OperatorScreen,
   error: ErrorScreen,
 };
 
