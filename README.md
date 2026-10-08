@@ -1,5 +1,7 @@
 # Van de Booth
 
+[![CI](https://github.com/Umeem26/Photobooth-Studio/actions/workflows/ci.yml/badge.svg)](https://github.com/Umeem26/Photobooth-Studio/actions/workflows/ci.yml)
+
 ![Van de Booth attract screen](docs/screenshots/1-attract.png)
 
 Van de Booth is an offline-first photobooth for events. Guests tap one button, pick a strip layout, pose for a 3-2-1 countdown, choose a look, then print the strip or scan a QR code to download it on their phone. It runs on one Windows PC with a webcam: a React touch UI inside Electron and a Java engine that composes, stores, prints and shares the strips. Photos never leave the booth PC.
