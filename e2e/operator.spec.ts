@@ -237,6 +237,8 @@ test('operator: "Layouts offered" membatasi kartu di Layout screen dan minimal s
 
   await holdWordmark(page);
   await typePin(page, PIN);
+  // Ketukan beruntun cepat tidak boleh saling menimpa
   for (const id of ['vertical-3', 'horizontal-3', 'grid-4', 'grid-6']) await group.getByTestId(`offer-${id}`).click();
   await expect(group.locator('[aria-checked="true"]')).toHaveCount(6);
+  await expect.poll(async () => (await (await api(page, 'GET', '/api/config')).json()).layoutsOffered.length).toBe(6);
 });

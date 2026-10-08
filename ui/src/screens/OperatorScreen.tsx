@@ -91,11 +91,17 @@ const num = (v: string | undefined, d: number) => (v === undefined || v === '' ?
 
 function LayoutsOffered({ config, layouts, save }: { config: AdminConfig; layouts: Layout[]; save: Save }) {
   const raw = config['layouts.offered'] ?? '';
-  const on = raw ? raw.split(',') : layouts.map((l) => l.id);
-  const toggle = (id: string) => {
+  const saved = raw ? raw.split(',') : layouts.map((l) => l.id);
+  // Pilihan lokal langsung berlaku agar ketukan beruntun tidak saling menimpa sebelum simpanan selesai
+  const [pending, setPending] = useState<string[] | null>(null);
+  useEffect(() => setPending(null), [raw]);
+  const on = pending ?? saved;
+  const toggle = async (id: string) => {
     const next = on.includes(id) ? on.filter((x) => x !== id) : [...on, id];
     if (next.length === 0) return; // minimal satu layout tetap aktif
-    save({ 'layouts.offered': layouts.filter((l) => next.includes(l.id)).map((l) => l.id).join(',') });
+    setPending(next);
+    const ok = await save({ 'layouts.offered': layouts.filter((l) => next.includes(l.id)).map((l) => l.id).join(',') });
+    if (!ok) setPending(null);
   };
   return (
     <div className="op-checks" role="group" aria-label={t.event.layouts} data-testid="layouts-offered">
