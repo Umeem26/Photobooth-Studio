@@ -127,7 +127,7 @@ public class ShareService implements AutoCloseable {
     public static String qrBase64(String text) throws BoothException {
         try {
             ByteArrayOutputStream png = new ByteArrayOutputStream();
-            ImageIO.write(QrCodeGenerator.generate(text, QR_SIZE), "png", png);
+            ImageIO.write(QrCodeGenerator.generate(text, QR_SIZE, 1), "png", png);
             return Base64.getEncoder().encodeToString(png.toByteArray());
         } catch (Exception e) {
             throw new BoothException(Kind.CONFLICT, "QR gagal dibuat");

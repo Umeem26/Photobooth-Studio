@@ -31,4 +31,23 @@ public class QrCodeGeneratorTest {
         assertThrows(IllegalArgumentException.class, () -> QrCodeGenerator.generate(null, 300));
         assertThrows(IllegalArgumentException.class, () -> QrCodeGenerator.generate("x", 0));
     }
+
+    @Test
+    void smallMarginKeepsQrReadableAndFillsMoreOfTheImage() throws Exception {
+        String text = "https://example.com/vandebooth/session/123";
+        BufferedImage tight = QrCodeGenerator.generate(text, 300, 1);
+        BufferedImage normal = QrCodeGenerator.generate(text, 300);
+        BinaryBitmap bitmap = new BinaryBitmap(new HybridBinarizer(new BufferedImageLuminanceSource(tight)));
+        assertEquals(text, new QRCodeReader().decode(bitmap).getText());
+        assertTrue(firstDark(tight) < firstDark(normal), "quiet zone lebih tipis");
+        assertThrows(IllegalArgumentException.class, () -> QrCodeGenerator.generate(text, 300, -1));
+    }
+
+    private static int firstDark(BufferedImage img) {
+        int y = img.getHeight() / 2;
+        for (int x = 0; x < img.getWidth(); x++) {
+            if ((img.getRGB(x, y) & 0xFFFFFF) == 0) return x;
+        }
+        return img.getWidth();
+    }
 }
