@@ -1,7 +1,7 @@
 {
   "name": "vandebooth",
   "private": true,
-  "version": "2.1.0",
+  "version": "2.1.1",
   "description": "Van de Booth: kiosk photobooth (Electron + React UI + Java sidecar)",
   "workspaces": [
     "ui",
